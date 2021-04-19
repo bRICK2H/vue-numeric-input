@@ -3,170 +3,181 @@
 		:value="initValue"
 		@input="input($event)"
 		@focus="focus($event)"
+		@blur="blur($event)"
 		@keydown="keydown($event)"
-		@dblclick="dblclick($event)"
+		@dblclick="dblclick"
+		@click="click($event)"
 	>
-		<!-- @click="click($event)" -->
-		<!-- @blur="blur" -->
 </template>
 
 <script>
-export default {
-	name: 'cInput',
-	props: {
-		dataRef: {
-			type: Object,
-			default: () => ({})
+	export default {
+		name: 'cInput',
+		props: {
+			dataRef: {
+				type: Object,
+				default: () => ({})
+			},
+			field: {
+				type: String,
+				default: 0
+			}
 		},
-		field: {
-			type: String,
-			default: 0
-		}
-	},
-	data: () => ({
-		initValue: null,
-		isFocus: false,
-		isRemove: false,
-		isNumeric: false,
-		// countFocusOut: 0,
-	}),
-	methods: {
-			/**
-			 * ! ПОЕБЕНЬ
-			 *  - 1. фокус, далее клик (твориться хуй пойми чего) т.к. фокус еще включен
-			 */
+		data: () => ({
+			initValue: null,
+			isFocus: false,
+			isRemove: false,
+			isNumeric: false,
+			isComma: false,
+			countFocusOut: 0,
+		}),
+		methods: {
 			input(e) {
 				const { target } = e,
 					innerValue = target.value.replace(/,/, '.'),
 					isNumeric = !isNaN(innerValue)
-
-				/**
-				 * * Если не число
-				 * 	- возвращаем в инпут прерыдущее значение в нужном формате
-				 * * Если фокус и вводится не число
-				 *  	- оставляем фокус
-				 *  - завершаем операцию
-				 * * Или если ввелось число при фокусе
-				 * 	- формируем нужное число для инпута
-				 * 	- разделяем число на числа до и после запятой
-				 * 	- устанавливаем нужную позицию для курсора
-				 * 	- возвращаем число внешнему объектку
-				 */
 
 				if (!isNumeric) {
 					target.value = this.dataRef[this.field].toFixed(2).replace(/\./, ',')
 					const [before] = target.value.split(',')
 					target.selectionStart = target.selectionEnd = String(Number(before)).length
 					if (this.isFocus) target.select()
+					if (this.isComma) {
+						target.selectionStart = target.selectionEnd = target.value.indexOf(',') + 1
+						this.isComma = false
+					}
 					return
-				} else if (this.isFocus)  {
+				} else if (this.isFocus) {
 					target.value = Number(target.value).toFixed(2).replace(/\./, ',')
-					const [before] = target.value.split(',')
-					console.log('число и фокус', {before}, this.dataRef[this.field])
 					this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
-					console.log({before})
 					target.selectionStart = target.selectionEnd = target.value.indexOf(',')
+					this.isFocus = false
+					return
 				}
 
-				// * Выключаем фокус
-				this.isFocus = false
 				const [before, after] = target.value.split(',')
+				this.countFocusOut = 0
 
 				if (target.selectionStart <= target.value.indexOf(',')) {
-					console.log('USED LEFT SIDE', before, target.selectionStart, target.selectionEnd)
-
-					/**
-					 * * Если ставим чило перед первым числом и это число 0
-					 * 	- заменяем на число
-					 */
-					if (target.selectionStart === 1) {
-						console.log('before 0')
-						// target.selectionStart = target.selectionEnd = 1
-						console.log(!Number(before[before.length - 1]), before[0])
-						if (!Number(before[before.length - 1]) && before[0]) {
-							console.log('if 0')
-							target.value = `${before[0]},${after}`
-							console.log('target.value', target.value)
-							// target.selectionStart = target.selectionEnd = target.value.indexOf(',')
-							return
+					if (!target.selectionStart) {
+						if (before === '') {
+							target.value = `${Number(before)},${after}`
+							target.selectionStart = target.selectionEnd = target.value.indexOf(',')
+						} else {
+							target.selectionStart = target.selectionEnd = 0
 						}
-					} else {
-						console.log('after 0')
-						target.value = `${Number(before)},${after}`
-						// target.selectionStart = target.selectionEnd = target.value.indexOf(',')
-						this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
 					}
-					
+
+					if (before.length === 2 && before.indexOf(0) !== -1 && before[0] === '0') {
+						const currNull = before.indexOf(0)
+						const beforeArray = before.split('')
+						beforeArray.splice(currNull, 1)
+						target.value = `${beforeArray.join('')},${after}`
+						target.selectionStart = target.selectionEnd = target.value.indexOf(',')
+					}
+
+					target.value = `${Number(before)},${after}`
+					this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
 
 				} else {
-					console.log('USED RIGHT SIDE', after)
+					if (after === undefined) {
+						if(!target.selectionStart) {
+							const zero = 0
+							target.value = String(zero.toFixed(2)).replace(/\./, ',')
+							this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
+						} else {
+							const tmp = target.value.split('')
+							tmp.splice(target.selectionStart, 0, ',')
+							target.value = Number(tmp.join('').replace(/,/, '.')).toFixed(2).replace(/\./, ',')
+							this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
+						}
 
-					if (after.length < 2) {
-						console.log('< 2 толком пока не делал даже')
-						target.value += 0
+						target.selectionStart = target.selectionEnd = target.value.indexOf(',')
 						return
+					}
+					
+					if (after.length < 2) {
+						if (!((target.selectionStart - before.length) - 1)) {
+							target.value = `${before},0${after}`
+							target.selectionStart = target.selectionEnd = target.value.indexOf(',') + 1
+						} else {
+							target.value = `${before},${after}0`
+							target.selectionStart = target.selectionEnd = target.value.indexOf(',') + 2
+						}
 					} else if (after.length > 2) {
 						const afterToArray = after.split('')
 
 						if (target.value.length - 2 === target.selectionStart) {
-							afterToArray.splice(-2, 1) // [1,2]
+							afterToArray.splice(-2, 1)
 							target.value = `${Number(before)},${afterToArray.join('')}`
 							target.selectionStart = target.selectionEnd = target.value.length - 1
-						} else if(target.value.length - 1 === target.selectionStart) {
+						} else if (target.value.length - 1 === target.selectionStart) {
 							afterToArray.splice(-1, 1)
 							target.value = `${Number(before)},${afterToArray.join('')}`
 						} else if (target.value.length === target.selectionStart) {
-							target.value = `${Number(before)},${after.slice(0,2)}`
+							target.value = `${Number(before)},${after.slice(0, 2)}`
 						}
-
-						this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
-						return
 					}
 
+					if (after === '') {
+						target.value = String(Number(before).toFixed(2)).replace(/\./, ',')
+					}
+
+					this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
+				}
+			},
+
+			keydown(e) {
+				const code = e.keyCode ? e.keyCode : e.which,
+						isArrow = [37, 38, 39, 40].includes(code),
+						isComma = 188 === code
+
+				if (isArrow || isComma) {
+					this.isFocus = false
+					this.isComma = true
 				}
 
-
-
-				// target.value = `${Number(before)},${after}`
-				// this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
-
-				// target.selectionStart = target.selectionEnd = String(Number(before)).length
 			},
-		
-		keydown(e) {
-			const { target } = e
-				// charCode = e.which ? e.which : e.keyCode
-			// this.isRemove = e.code === 'Backspace' || charCode === 8,
-			// this.isNumeric = !(charCode != 43 && charCode > 31 && (charCode < 48 || charCode > 57))
-			
-		},
-		focus(e) {
-			const { target } = e
-			this.isFocus = true
-			target.select()
-		},
-		dblclick(e) {
-			const { target } = e
+			focus(e) {
+				const { target } = e,
+						[before, after] = target.value.split(',')
 
-			console.log('dbl', e.target.value, target.selectionStart)
+				target.value = `${before.replace(/ /g, '')},${after}`
+				this.isFocus = true
+				target.select()
+			},
+			blur(e) {
+				const { target } = e,
+						[before, after] = target.value.split(',')
+
+				target.value = `${this.setSeparatorSpace(before)},${after}`
+				this.countFocusOut = 0
+			},
+			dblclick() {
+				this.isFocus = true
+			},
+			click() {
+				this.countFocusOut++
+				if (this.countFocusOut > 1) {
+					this.isFocus = false
+				}
+			},
+			setSeparatorSpace(str) {
+				let str2 = str.split('')
+				const tmp = []
+				for (let i = str2.length; i > 0; i -= 3) {
+					i - 3 >= 0
+						? tmp.unshift(' ', ...str2.splice([i] - 3, 3))
+						: tmp.unshift(...str2)
+				}
+
+				return tmp.join('').trim()
+			}
+		},
+		created() {
+			this.initValue = this.dataRef[this.field].toFixed(2).replace(/\./, ',')
 		}
-		// click(e) {
-		// 	this.countFocusOut++
-		// 	console.log('click', this.countFocusOut)
-		// 	if (this.countFocusOut >= 1) {
-		// 		this.isFocus = false
-		// 	}
-		// 	const { target } = e
-		// },
-		// blur() {
-		// 	console.log('blur')
-		// 	this.countFocusOut = 0
-		// }
-	},
-	created() {
-		this.initValue = this.dataRef[this.field].toFixed(2).replace(/\./, ',')
 	}
-}
 </script>
 
 <style lang="scss">

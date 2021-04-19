@@ -19,7 +19,12 @@ export default {
 	},
 	data: () => ({
 		data: { value: 1.4 }
-	})
+	}),
+	watch: {
+		'data.value'(val) {
+			console.log('outer: ', val)
+		}
+	}
 }
 </script>
 
