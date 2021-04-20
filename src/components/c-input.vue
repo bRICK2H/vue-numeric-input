@@ -29,6 +29,7 @@
 			isRemove: false,
 			isNumeric: false,
 			isComma: false,
+			isDelete: false,
 			countFocusOut: 0,
 		}),
 		methods: {
@@ -52,11 +53,11 @@
 					this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
 					target.selectionStart = target.selectionEnd = target.value.indexOf(',')
 					this.isFocus = false
-					return
 				}
 
 				const [before, after] = target.value.split(',')
 				this.countFocusOut = 0
+
 
 				if (target.selectionStart <= target.value.indexOf(',')) {
 					if (!target.selectionStart) {
@@ -92,18 +93,22 @@
 							this.dataRef[this.field] = Number(target.value.replace(/,/, '.'))
 						}
 
-						target.selectionStart = target.selectionEnd = target.value.indexOf(',')
+						target.selectionStart = target.selectionEnd = this.isDelete
+							? target.value.indexOf(',') + 1
+							: target.value.indexOf(',')
+
 						return
 					}
 					
 					if (after.length < 2) {
 						if (!((target.selectionStart - before.length) - 1)) {
-							target.value = `${before},0${after}`
+							target.value = String(Number(target.value.replace(/,/, '.')).toFixed(2)).replace(/\./, ',')
 							target.selectionStart = target.selectionEnd = target.value.indexOf(',') + 1
 						} else {
-							target.value = `${before},${after}0`
+							target.value = String(Number(target.value.replace(/,/, '.')).toFixed(2)).replace(/\./, ',')
 							target.selectionStart = target.selectionEnd = target.value.indexOf(',') + 2
 						}
+
 					} else if (after.length > 2) {
 						const afterToArray = after.split('')
 
@@ -130,7 +135,10 @@
 			keydown(e) {
 				const code = e.keyCode ? e.keyCode : e.which,
 						isArrow = [37, 38, 39, 40].includes(code),
-						isComma = 188 === code
+						isComma = 188 === code,
+						isDelete = 46 === code
+
+				this.isDelete = isDelete
 
 				if (isArrow || isComma) {
 					this.isFocus = false

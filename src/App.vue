@@ -6,23 +6,38 @@
 		/>
 
 		outer: {{ data.value }}
+
+		<v-input
+			:dataRef="data"
+			field="value"
+			:maxAfterComma="0"
+			v-model="value"
+		/>
+
+		outer: {{ data.value }}
 	</div>
 </template>
 
 <script>
 import cInput from './components/c-input'
+import vInput from './components/v-input'
 
 export default {
 	name: 'App',
 	components: {
-		cInput
+		cInput,
+		vInput
 	},
 	data: () => ({
-		data: { value: 1.4 }
+		data: { value: 2.420 },
+		value: 0
 	}),
 	watch: {
 		'data.value'(val) {
 			console.log('outer: ', val)
+		},
+		value(val) {
+			console.log('val', val)
 		}
 	}
 }
