@@ -17,7 +17,11 @@ export default {
 			type: String,
 			default: 0
 		},
-		maxAfterComma: {
+		value: {
+			type: [String, Number],
+			default: 0,
+		},
+		maxNumAfterComma: {
 			type: Number,
 			default: 2
 		}
@@ -28,16 +32,17 @@ export default {
 	methods: {
 		inputValue(e) {
 			const { target, data, inputType } = e,
-					isNumeric = !isNaN(Number(target.value)),
+					isComma = data === ',',
 					isPoint = data === '.',
-					isE = data === 'e',
+					isExhibitor = data === 'e',
+					isNumeric = !isNaN(Number(target.value)),
 					isDelete = ['deleteContentBackward', 'deleteContentForward'].includes(inputType)
 
 			console.log({isNumeric, e, isDelete})
 
 
 			// Отсутствие дробной части
-			if (!this.maxAfterComma) {
+			if (!this.maxNumAfterComma) {
 				if (!isNumeric) {
 					target.value = target.value.replace(/[^\d]/g, '')
 				}
@@ -48,30 +53,41 @@ export default {
 			
 
 			// Дробная часть присутствует
-			if (!isNumeric || isE || !this.maxAfterComma) {
-				target.value = this.dataRef[this.field]
+			if (!isNumeric || isExhibitor) {
+				target.value = this.value
 				target.selectionStart = target.selectionEnd = target.value.indexOf('.')
+
+				if (isPoint || isComma) {
+					target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
+				}
+
 				return
 			}
-			
-			if (isPoint) {
-				target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
-			}
+
+			console.log('go') // Bug, запятая и точка ломает всю логику
 
 			const [before, after] = target.value.split('.'),
 					beforeCommaLength = before.length + 1
 			console.log({before, after})
 
-			// if comma
+			/**
+			 * If cursor contains comma
+			 */
 			if (after === undefined) {
-				const [beforeOrigin] = String(this.dataRef[this.field]).split('.')
-				target.value = Number(beforeOrigin).toFixed(this.maxAfterComma)
+				console.log('comma: ')
+				const [beforeOriginalValue] = String(this.value).split('.')
+				target.value = Number(beforeOriginalValue).toFixed(this.maxNumAfterComma)
 				target.selectionStart = target.selectionEnd = target.value.indexOf('.')
 			}
 
-			// if left
+			/**
+			 * If cursor locatec in input
+			 * left and right side
+			 */
 			if (target.selectionStart > before.length) {
 				console.log('before')
+
+				// right side if deleted value
 				if (!isDelete) {
 					console.log('!del')
 					const afterArr = after.split(''),
@@ -79,33 +95,52 @@ export default {
 	
 					afterArr.splice(target.selectionStart - beforeCommaLength, 1)
 					target.value = `${before}.${afterArr.join('')}`
-					this.dataRef[this.field] = Number(target.value)
+					this.$emit('input', Number(target.value))
 					target.selectionStart = target.selectionEnd = beforeCommaLength + changedIndex 
 	
 					const [, afterUp] = target.value.split('.')
 	
-					if (afterUp.length > this.maxAfterComma) {
+					if (afterUp.length > this.maxNumAfterComma) {
 						afterArr.splice(-1, 1)
 						target.value = `${before}.${afterArr.join('')}`
-						this.dataRef[this.field] = Number(target.value)
+						this.$emit('input', Number(target.value))
 						target.selectionStart = target.selectionEnd = target.value.length
 					}
-				} else { // if right
-					const [, afterComma] = String(Number(target.value).toFixed(this.maxAfterComma)).split('.'),
+				} else {
+					// rigth side if added value
+					const [, afterComma] = String(Number(target.value).toFixed(this.maxNumAfterComma)).split('.'),
 							afterArr = afterComma.split(''),
 							deletedIndex = afterArr.findIndex((el, i) => i === target.selectionStart - beforeCommaLength)
 
-					target.value = Number(target.value).toFixed(this.maxAfterComma)
+					target.value = Number(target.value).toFixed(this.maxNumAfterComma)
+					this.$emit('input', Number(target.value))
 					target.selectionStart = target.selectionEnd = beforeCommaLength + deletedIndex
 				}
 				
 			} else {
-				console.log('after')
 
-				// if del
+				// left side toggle value
+				const [beforeArrayValue] = target.value.split('.'),
+					isInt = !!Number(beforeArrayValue[beforeArrayValue.length - 1]),
+					isZero = !Number(beforeArrayValue[beforeArrayValue.length - 2]),
+					isNull = beforeArrayValue[beforeArrayValue.length - 3] === undefined
+
+				// replace zero before int
+				if (isInt && isZero && isNull && !isDelete) {
+					console.log('zero before')
+					target.value = Number(target.value).toFixed(this.maxNumAfterComma)
+					target.selectionStart = target.selectionEnd = target.value.indexOf('.')
+				}
+
+				// left side if deleted lasted value
 				if (before === '') {
 					console.log('before del')
+					const zero = 0
+					target.value = `${zero.toFixed(this.maxNumAfterComma)}`
+					target.selectionStart = target.selectionEnd = target.value.indexOf('.')
 				}
+
+				this.$emit('input', Number(target.value))
 
 			}
 			
@@ -117,22 +152,22 @@ export default {
 		}
 	},
 	created() {
-		const outerValue = this.dataRef[this.field]
+		const outerValue = this.value
 		
-		if (!this.maxAfterComma) {
+		if (!this.maxNumAfterComma) {
 			this.initValue = Math.floor(outerValue)
 		} else {
 			const [, vAfterComma] = String(outerValue).split('.'),
 					vAfterCommaLen = vAfterComma.length
 
-			if (vAfterCommaLen >= this.maxAfterComma) {
+			if (vAfterCommaLen >= this.maxNumAfterComma) {
 
 				const outerValueArr = String(outerValue).split(''),
 						outerCommaIndex = String(outerValue).indexOf('.') + 1
 
-				this.initValue = outerValueArr.splice(0, this.maxAfterComma + outerCommaIndex).join('')
+				this.initValue = outerValueArr.splice(0, this.maxNumAfterComma + outerCommaIndex).join('')
 			} else {
-				this.initValue = this.dataRef[this.field].toFixed(this.maxAfterComma)
+				this.initValue = outerValue.toFixed(this.maxNumAfterComma)
 			}
 			
 		}

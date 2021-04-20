@@ -10,11 +10,12 @@
 		<v-input
 			:dataRef="data"
 			field="value"
-			:maxAfterComma="0"
-			v-model="value"
+			:maxNumAfterComma="2"
+			:value="mValue"
+			v-model="mValue"
 		/>
 
-		outer: {{ data.value }}
+		outer: {{ mValue }}
 	</div>
 </template>
 
@@ -30,13 +31,13 @@ export default {
 	},
 	data: () => ({
 		data: { value: 2.420 },
-		value: 0
+		mValue: 3.25
 	}),
 	watch: {
 		'data.value'(val) {
 			console.log('outer: ', val)
 		},
-		value(val) {
+		mValue(val) {
 			console.log('val', val)
 		}
 	}
