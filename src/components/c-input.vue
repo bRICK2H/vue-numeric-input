@@ -144,7 +144,6 @@
 					this.isFocus = false
 					this.isComma = true
 				}
-
 			},
 			focus(e) {
 				const { target } = e,

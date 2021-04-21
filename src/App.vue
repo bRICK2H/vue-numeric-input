@@ -16,22 +16,30 @@
 		/>
 
 		outer: {{ mValue }}
+
+		<!-- <k-input
+			:value="kValue"
+			:decimal="4"
+		/> -->
 	</div>
 </template>
 
 <script>
 import cInput from './components/c-input'
 import vInput from './components/v-input'
+import kInput from './components/k-input'
 
 export default {
 	name: 'App',
 	components: {
 		cInput,
-		vInput
+		vInput,
+		kInput
 	},
 	data: () => ({
 		data: { value: 2.420 },
-		mValue: 3.25
+		mValue: 3.25,
+		kValue: 154655.315
 	}),
 	watch: {
 		'data.value'(val) {
