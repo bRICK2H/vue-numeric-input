@@ -15,14 +15,6 @@
 export default {
 	name: 'vInput',
 	props: {
-		dataRef: {
-			type: Object,
-			default: () => ({})
-		},
-		field: {
-			type: String,
-			default: 0
-		},
 		value: {
 			type: [String, Number],
 			default: 0,

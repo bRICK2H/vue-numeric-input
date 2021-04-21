@@ -8,8 +8,6 @@
 		outer: {{ data.value }}
 
 		<v-input
-			:dataRef="data"
-			field="value"
 			:maxNumAfterComma="2"
 			:value="mValue"
 			v-model="mValue"
@@ -21,6 +19,14 @@
 			:value="kValue"
 			:decimal="4"
 		/> -->
+
+		<n-input
+			v-model="nValue"
+			:decimal="2"
+			:value="nValue"
+		/>
+
+		input: {{ nValue }}
 	</div>
 </template>
 
@@ -28,18 +34,21 @@
 import cInput from './components/c-input'
 import vInput from './components/v-input'
 import kInput from './components/k-input'
+import nInput from './components/n-input'
 
 export default {
 	name: 'App',
 	components: {
 		cInput,
 		vInput,
-		kInput
+		kInput,
+		nInput
 	},
 	data: () => ({
 		data: { value: 2.420 },
 		mValue: 3.25,
-		kValue: 154655.315
+		kValue: 154655.315,
+		nValue: 2000000.5945,
 	}),
 	watch: {
 		'data.value'(val) {
