@@ -132,6 +132,9 @@ export default {
 				}
 
 				target.selectionStart = target.selectionEnd = this.beforeSelection
+				if (this.isDeleteForward) {
+					target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
+				}
 				this.$emit('input', Number(target.value))
 				
 				return
