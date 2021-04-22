@@ -8,7 +8,7 @@
 		outer: {{ data.value }}
 
 		<v-input
-			:maxNumAfterComma="2"
+			:maxNumAfterComma="0"
 			:value="mValue"
 			v-model="mValue"
 		/>
@@ -22,7 +22,7 @@
 
 		<n-input
 			v-model="nValue"
-			:decimal="2"
+			:decimal="0"
 			:value="nValue"
 		/>
 
@@ -46,9 +46,9 @@ export default {
 	},
 	data: () => ({
 		data: { value: 2.420 },
-		mValue: 3.25,
+		mValue: 154655.315,
 		kValue: 154655.315,
-		nValue: 2000000.5945,
+		nValue: 12312322012.596,
 	}),
 	watch: {
 		'data.value'(val) {
