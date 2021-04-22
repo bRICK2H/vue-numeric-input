@@ -22,7 +22,7 @@
 
 		<n-input
 			v-model="nValue"
-			:decimal="0"
+			:decimal="2"
 			:value="nValue"
 		/>
 
@@ -48,7 +48,7 @@ export default {
 		data: { value: 2.420 },
 		mValue: 154655.315,
 		kValue: 154655.315,
-		nValue: 12312322012.596,
+		nValue: 12312322012.44,
 	}),
 	watch: {
 		'data.value'(val) {

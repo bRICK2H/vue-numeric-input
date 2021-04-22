@@ -81,30 +81,39 @@ export default {
 			return Number(val.replace(/ /g, '').replace(/,/, '.'))
 		},
 		toInput(val) {
-			console.log('val: ', val)
-			const value = typeof val === 'string'
-				? Number(val.replace(/[^\d,]/g, '').replace(/,/, '.'))
-				: val
+			// console.log({val})
+			const value = String(val)
+				.replace(/[^\d,\.]/g, '')
+				.replace(/[,\.]/, ',')
 
-			let tmp = this.decimal
-				? String(value).split('')
-				: String(value)
-
-			if (this.decimal) {
-				tmp.splice(String(value).indexOf('.') + 1 + this.decimal)
+			let parseValue = null
+			
+			if (!this.decimal) {
+				parseValue = value.indexOf(',') !== -1
+					? value.slice(0, value.indexOf(','))
+					: value
+				console.log('!dec', parseValue)
+			} else {
+				const afterComma = value.slice(value.indexOf(',') + 1);
+				console.log('dec', value, afterComma, String(Number(value.replace(/,/, '.')).toFixed(this.decimal)).replace(/\./, ',') )
+				parseValue = Number(afterComma) > this.decimal
+					? String(Number(value.replace(/,/, '.')).toFixed(this.decimal)).replace(/\./, ',')
+					: value.slice(0, -(this.decimal + 1))
 			}
-			console.log({tmp})
-			const checkedDecimal = this.decimal
-				? tmp.join('')
-				: Math.floor(tmp)
-			const arrValue = checkedDecimal.split('')
-			const wholePart = arrValue.indexOf(',') !== -1
-				? arrValue.splice(0, arrValue.indexOf(','))
-				: arrValue
 
-			console.log({wholePart}, arrValue.indexOf(','), arrValue.indexOf(',') !== -1)
+			// console.log({parseValue})
+			// return
+		
 			const newArrValue = []
-			console.log({newArrValue})
+			const arrValue = parseValue.split('')
+			console.log({arrValue})
+			let wholePart = arrValue.indexOf(',') !== -1
+				? arrValue.splice(0, arrValue.indexOf(','))
+				: arrValue.splice(0)
+			// на выходе вроде все ок, но при удалении шляпа
+
+			// console.log({wholePart, arrValue})
+			// return
 
 			for (let i = wholePart.length; i > 0; i -= 3) {
 				i - 3 >= 0
@@ -112,6 +121,7 @@ export default {
 					: newArrValue.unshift(...wholePart)
 			}
 			newArrValue.push(...arrValue)
+			console.log('preres: ', newArrValue.join('').trim())
 			return newArrValue.join('').trim()
 		},
 		trigger(e) {
