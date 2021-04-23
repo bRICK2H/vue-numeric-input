@@ -1,300 +1,348 @@
 <template>
-	<input type="text"
-		:value="initValue"
-		@input="inputValue($event)"
-		@focus="focus($event)"
-		@focusout="unfocus"
-		@keyup.esc="keyup($event)"
-		@keydown="keydown($event)"
-		@dblclick="isFocus = true"
-		@click="clickCounter++"
-	>
+	<div class="b-price">
+		<div class="input-box b-price__input-box"
+			:style="setStyleInputBox"
+		>
+			<span class="input-box__sign"
+				v-html="getCurrency"
+				:style="setStyleSign"
+				@click="focusToInput($event)"
+			></span>
+			<input class="input-box__price"
+				type="text"
+				:style="setStyleInput"
+				:value="initValue"
+				@input="inputValue($event)"
+				@focus="focus($event)"
+				@focusout="unfocus"
+				@keyup.esc="keyup($event)"
+				@keydown="keydown($event)"
+				@dblclick="isFocus = true"
+				@click="clickCounter++"
+			>
+		</div>
+	</div>
 </template>
 
 <script>
-export default {
-	name: 'vInput',
-	props: {
-		value: {
-			type: [String, Number],
-			default: 0,
+	export default {
+		name: 'vInput',
+		props: {
+			value: {
+				type: [String, Number],
+				default: 0,
+			},
+			decimal: {
+				type: Number,
+				default: 0
+			},
+			width: {
+				type: [Number, String],
+				default: 100
+			},
+			height: {
+				type: [Number, String],
+				default: 37
+			},
+			currency: {
+				type: String,
+				default: 'ru'
+			},
 		},
-		maxNumAfterComma: {
-			type: Number,
-			default: 2
-		}
-	},
-	data: () => ({
-		initValue: 0,
-		prevValue: 0,
-		beforeSelection: 0,
-		clickCounter: 0,
-		isFocus: false,
-		isComma: false,
-		isPoint: false,
-		isDeleteForward: false,
-		isBothDelete: false,
-		isExhibitor: false,
-		dedicated: [],
-		dedicatedSelection: []
-	}),
-	methods: {
-		inputValue(e) {
-			const { target } = e,
+		data: () => ({
+			initValue: 0,
+			prevValue: 0,
+			beforeSelection: 0,
+			clickCounter: 0,
+			isFocus: false,
+			isComma: false,
+			isPoint: false,
+			isDeleteForward: false,
+			isBothDelete: false,
+			isExhibitor: false,
+			dedicated: [],
+			dedicatedSelection: [],
+			currencies: {
+				df: { sign: '', pos: 'left' },
+				en: { sign: '&#36;', pos: 'left' },
+				lb: { sign: '&#163;', pos: 'left' },
+				ru: { sign: '&#8381;', pos: 'right' },
+			},
+		}),
+		computed: {
+			getCurrency() {
+				return this.currencies[this.currency].sign
+			},
+			setStyleInput() {
+				return { textAlign: this.currencies[this.currency].pos,
+				[`padding-${this.currencies[this.currency].pos}`]: '20px'
+			}
+			},
+			setStyleSign() {
+				return { [this.currencies[this.currency].pos]: '0' }
+			},
+			setStyleInputBox() {
+				return {
+					height: !isNaN(Number(this.height))
+						? `${this.height}px`
+						: this.height,
+					width: !isNaN(Number(this.width))
+						? `${this.width}px`
+						: this.width
+				}
+			},
+		},
+		methods: {
+			inputValue(e) {
+				const { target } = e,
 					isNumeric = !isNaN(Number(target.value))
 
-			this.beforeSelection = target.selectionStart
-			console.log(e, this.clickCounter)
-			if (this.clickCounter >= 2) {
-				this.isFocus = false
-				this.clickCounter = 0
-			}
+				this.beforeSelection = target.selectionStart
+				if (this.clickCounter >= 2) {
+					this.isFocus = false
+					this.clickCounter = 0
+				}
 
-			// Фокус
-			if (this.isFocus) {
-				console.log('focus: ')
-				if (!isNumeric) {
-					console.log('ne num')
-					target.value = this.value
-					target.select()
+				// Фокус
+				if (this.isFocus) {
+					if (!isNumeric) {
+						target.value = this.parseValue(this.value)
+						target.select()
+						return
+					}
+
+					target.value = Number(target.value).toFixed(this.decimal)
+					target.selectionStart = target.selectionEnd = 1
+					this.isFocus = false
+					this.$emit('input', Number(target.value))
 					return
 				}
 
-				console.log('if numeric')
-				target.value = Number(target.value).toFixed(this.maxNumAfterComma)
-				target.selectionStart = target.selectionEnd = 1
-				this.isFocus = false
-				this.$emit('input', Number(target.value))
-				return
-			}
-
-			// Отсутствие дробной части
-			if (!this.maxNumAfterComma) {
-				console.log('isInt')
-				if (!isNumeric) {
-					target.value = target.value.replace(/[^\d]/g, '')
-				}
-				
-				this.$emit('input', Number(target.value))
-				return
-			}
-			
-
-			// Дробная часть присутствует
-			if (!isNumeric || this.isExhibitor) {
-				console.log('isFloat', target.selectionStart)
-				target.value = this.value.toFixed(this.maxNumAfterComma)
-				target.setSelectionRange(...this.dedicatedSelection)
-				// target.selectionStart = target.selectionEnd = this.beforeSelection
-
-				if (this.isPoint || this.isComma) {
-					console.log('.,')
-					target.value = Number(target.value).toFixed(this.maxNumAfterComma)
-					target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
+				// Отсутствие дробной части
+				if (!this.decimal) {
+					target.value = Number(target.value.replace(/[^\d]/g, ''))
+					this.$emit('input', Number(target.value))
+					return
 				}
 
-				return
-			}
+				// Дробная часть присутствует
+				if (!isNumeric || this.isExhibitor) {
+					target.value = this.parseValue(this.value)
+					target.setSelectionRange(...this.dedicatedSelection)
 
-			console.log('go') // Bug, запятая и точка ломает всю логику
+					if (this.isPoint || this.isComma) {
+						target.value = Number(target.value).toFixed(this.decimal)
+						target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
+					}
 
-			const [before, after] = target.value.split('.'),
+					return
+				}
+
+				const [before, after] = target.value.split('.'),
 					beforeCommaLength = before.length + 1
 
-			/**
-			 * If cursor contains comma
-			 */
-			if (after === undefined) {
-				console.log('inner comma', target.value, this.value, this.dedicated)
-				const curArrayValue = String(this.value).split(''),
-						[beforeIndex] = this.dedicatedSelection
-				curArrayValue.forEach((curr, i) => {
-					if (this.dedicated.includes(i) && curr.indexOf('.') === -1) {
-						curArrayValue.splice(i, 1, '')
+				/**
+				 * If cursor contains comma
+				 */
+				if (after === undefined) {
+					const curArrayValue = !this.dedicated.length
+						? String(this.value).split('')
+						: String(this.parseValue(this.value)).split('')
+					const [beforeIndex] = this.dedicatedSelection
+
+					curArrayValue.forEach((curr, i) => {
+						if (this.dedicated.includes(i) && curr.indexOf('.') === -1) {
+							curArrayValue.splice(i, 1, '')
+						}
+					})
+
+					if (e.data) curArrayValue.splice(beforeIndex, 1, e.data)
+					if (isNaN(Number(curArrayValue.join('')))) {
+						const zero = 0
+						target.value = zero.toFixed(this.decimal)
+					} else {
+						target.value = Number(curArrayValue.join('')).toFixed(this.decimal)
 					}
-				})
 
-				console.log(beforeIndex)
-				if(e.data) curArrayValue.splice(beforeIndex, 1, e.data)
-				if (isNaN(Number(curArrayValue.join('')))) {
-					const zero = 0
-					target.value = zero.toFixed(this.maxNumAfterComma)
-				} else {
-					target.value = Number(curArrayValue.join('')).toFixed(this.maxNumAfterComma)
-				}
-
-				target.selectionStart = target.selectionEnd = this.beforeSelection
-				if (this.isDeleteForward) {
-					target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
-				}
-				this.$emit('input', Number(target.value))
-				
-				return
-
-				// const [beforeOriginalValue] = String(this.value).split('.')
-				// console.log('comma: ', target.code)
-				// if (this.isBothDelete) {
-				// 	console.log('inner comma')
-				// 	const curArrayValue = String(this.value).split('')
-				// 	curArrayValue.forEach((curr, i) => {
-				// 		if (this.dedicated.includes(i) && curr.indexOf('.') === -1) {
-				// 			curArrayValue.splice(i, 1, '')
-				// 		}
-				// 	})
-
-				// 	if (isNaN(Number(curArrayValue.join('')))) {
-				// 		const zero = 0
-				// 		target.value = zero.toFixed(this.maxNumAfterComma)
-				// 	} else {
-				// 		target.value = Number(curArrayValue.join('')).toFixed(this.maxNumAfterComma)
-				// 	}
-
-				// 	target.selectionStart = target.selectionEnd = this.beforeSelection
-				// 	this.$emit('input', Number(target.value))
-					
-				// 	return
-				// } else {
-				// 	console.log('addd', target.value, this.value, this.dedicated)
-				// }
-				// if (this.isDeleteForward) {
-				// 	target.value = this.value.toFixed(this.maxNumAfterComma)
-				// 	target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
-				// 	return
-				// }
-
-				// target.value = Number(beforeOriginalValue).toFixed(this.maxNumAfterComma)
-				// target.selectionStart = target.selectionEnd = target.value.indexOf('.')
-				// return
-			}
-
-			/**
-			 * If cursor located in input
-			 * left and right side
-			 */
-			if (target.selectionStart > before.length) {
-				console.log('before', this.dedicated)
-
-				// right side if deleted value
-				if (!this.isBothDelete) {
-					console.log('!del rigth')
-					const afterArr = after.split('')
-							// changedIndex = afterArr.findIndex((el, i) => i === target.selectionStart - beforeCommaLength)
-	
-					afterArr.splice(target.selectionStart - beforeCommaLength, 1)
-					target.value = Number(`${before}.${afterArr.join('')}`).toFixed(this.maxNumAfterComma)
-					this.$emit('input', Number(target.value))
 					target.selectionStart = target.selectionEnd = this.beforeSelection
-					// console.log(beforeCommaLength + changedIndex, this.beforeSelection)
-	
-					const [, afterUp] = target.value.split('.')
-	
-					if (afterUp.length > this.maxNumAfterComma) {
-						afterArr.splice(-1, 1)
-						target.value = `${before}.${afterArr.join('')}`
-						this.$emit('input', Number(target.value))
-						target.selectionStart = target.selectionEnd = target.value.length
+					if (this.isDeleteForward) {
+						target.selectionStart = target.selectionEnd = target.value.indexOf('.') + 1
 					}
-				} else {
-					console.log('del right')
-					// rigth side if added value
-					const [, afterComma] = String(Number(target.value).toFixed(this.maxNumAfterComma)).split('.'),
+					this.$emit('input', Number(target.value))
+
+					return
+				}
+
+				/**
+				 * If cursor located in input
+				 * left and right side
+				 */
+				if (target.selectionStart > before.length) {
+					
+					// right side if deleted value
+					if (!this.isBothDelete) {
+						const afterArr = after.split('')
+
+						afterArr.splice(target.selectionStart - beforeCommaLength, 1)
+						target.value = Number(`${before}.${afterArr.join('')}`).toFixed(this.decimal)
+						this.$emit('input', Number(target.value))
+						target.selectionStart = target.selectionEnd = this.beforeSelection
+
+						const [, afterUp] = target.value.split('.')
+
+						if (afterUp.length > this.decimal) {
+							afterArr.splice(-1, 1)
+							target.value = `${before}.${afterArr.join('')}`
+							this.$emit('input', Number(target.value))
+							target.selectionStart = target.selectionEnd = target.value.length
+						}
+					} else {
+						// rigth side if added value
+						const [, afterComma] = String(Number(target.value).toFixed(this.decimal)).split('.'),
 							afterArr = afterComma.split(''),
 							deletedIndex = afterArr.findIndex((el, i) => i === target.selectionStart - beforeCommaLength)
-					console.log(beforeCommaLength + deletedIndex, this.beforeSelection)
 
-					target.value = Number(target.value).toFixed(this.maxNumAfterComma)
-					this.$emit('input', Number(target.value))
-					target.selectionStart = target.selectionEnd = beforeCommaLength + deletedIndex
+						target.value = Number(target.value).toFixed(this.decimal)
+						this.$emit('input', Number(target.value))
+						target.selectionStart = target.selectionEnd = beforeCommaLength + deletedIndex
+					}
+
+				} else {
+					const isFirstZero = !Number(before[0])
+					target.value = Number(target.value).toFixed(this.decimal)
+					target.selectionStart = target.selectionEnd = this.beforeSelection
+
+					if (isFirstZero && !this.isBothDelete) {
+						target.selectionStart = target.selectionEnd = this.beforeSelection - 1
+					}
+
+					// left side if deleted lasted value
+					if (before === '') {
+						target.value = `${Number(before)}.${after}`
+						target.selectionStart = target.selectionEnd = target.value.indexOf('.')
+					}
+
+					this.$emit('input', Number(target.value).toFixed(this.decimal))
+
 				}
-				
-			} else {
-				console.log('left side toggle', target.value, {bS: this.beforeSelection, s: target.selectionStart})
-				const isFirstZero = !Number(before[0])
-				target.value = Number(target.value).toFixed(this.maxNumAfterComma)
-				target.selectionStart = target.selectionEnd = this.beforeSelection
 
-				if (isFirstZero && !this.isBothDelete) {
-					target.selectionStart = target.selectionEnd = this.beforeSelection - 1
-				}
-
-				// left side if deleted lasted value
-				if (before === '') {
-					console.log('before del', after)
-					target.value = `${Number(before)}.${after}`
-					target.selectionStart = target.selectionEnd = target.value.indexOf('.')
-				}
-
-				this.$emit('input', Number(target.value))
-
-			}
-			
-		},
-		keydown(e) {
-			const { target } = e,
+			},
+			keydown(e) {
+				const { target } = e,
 					code = e.code,
 					arrows = ['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'],
 					isComma = this.isComma = code === 'Comma',
 					isPoint = this.isPoint = code === 'Period',
 					isArrowsExist = arrows.includes(code)
 
-			this.isExhibitor = code === 'KeyE'
-			this.isDeleteForward = code === 'Delete'
-			this.isBothDelete = ['Delete', 'Backspace'].includes(code)
-			this.dedicatedSelection = [target.selectionStart, target.selectionEnd]
-			this.dedicated = []
-			// const tmp = []
-			for(let i = target.selectionStart; i < target.selectionEnd; i++) {
-				this.dedicated.push(i)
-			}
-			// console.log(tmp)
+				this.isExhibitor = code === 'KeyE'
+				this.isDeleteForward = code === 'Delete'
+				this.isBothDelete = ['Delete', 'Backspace'].includes(code)
+				this.dedicatedSelection = [target.selectionStart, target.selectionEnd]
+				this.dedicated = []
+				for (let i = target.selectionStart; i < target.selectionEnd; i++) {
+					this.dedicated.push(i)
+				}
 
-			if (isArrowsExist || isComma || isPoint) {
+				if (isArrowsExist || isComma || isPoint) {
+					this.isFocus = false
+				}
+			},
+			keyup(e) {
+				const { target } = e
+				target.value = this.prevValue
+				target.select()
+				this.isFocus = true
+				this.$emit('input', this.prevValue)
+			},
+			focus(e) {
+				const { target } = e
+				target.select()
+				this.isFocus = true
+			},
+			focusToInput(e) {
+				const { target } = e
+				target.nextElementSibling.focus()
+				this.isFocus = true
+			},
+			unfocus(e) {
+				const { target } = e
+				this.prevValue = target.value
 				this.isFocus = false
+			},
+			parseValue(val) {
+				let initValue = null
+				const clearValue = String(val).replace(/[^\d\.]/g, '')
+				const outerValue = (Number(Number(clearValue).toFixed(this.decimal)))
+
+				if (!this.decimal) {
+					initValue = Math.floor(outerValue)
+				} else {
+					const parseDecimal = String(outerValue).indexOf('.') !== -1
+						? outerValue
+						: outerValue.toFixed(this.decimal)
+					const [, vAfterComma] = String(parseDecimal).split('.'),
+						vAfterCommaLen = vAfterComma.length
+
+					if (vAfterCommaLen > this.decimal) {
+						const outerValueArr = String(outerValue).split(''),
+							outerCommaIndex = String(outerValue).indexOf('.') + 1
+
+						initValue = outerValueArr.splice(0, this.decimal + outerCommaIndex).join('')
+					} else {
+						initValue = outerValue.toFixed(this.decimal)
+					}
+
+				}
+
+				return initValue
 			}
 		},
-		keyup(e) {
-			const { target } = e
-			target.value = this.prevValue
-			this.$emit('input', this.prevValue)
+		created() {
+			this.prevValue = this.initValue = this.parseValue(this.value)
 		},
-		focus(e) {
-			const { target } = e
-			console.log('focus')
-			target.select()
-			this.isFocus = true
-		},
-		unfocus(e) {
-			const { target } = e
-			this.prevValue = target.value
-			this.isFocus = false
-		}
-	},
-	created() {
-		const outerValue = this.value
-		
-		if (!this.maxNumAfterComma) {
-			this.initValue = Math.floor(outerValue)
-		} else {
-			const [, vAfterComma] = String(outerValue).split('.'),
-					vAfterCommaLen = vAfterComma.length
-
-			if (vAfterCommaLen >= this.maxNumAfterComma) {
-
-				const outerValueArr = String(outerValue).split(''),
-						outerCommaIndex = String(outerValue).indexOf('.') + 1
-
-				this.initValue = outerValueArr.splice(0, this.maxNumAfterComma + outerCommaIndex).join('')
-			} else {
-				this.initValue = outerValue.toFixed(this.maxNumAfterComma)
-			}
-			
-		}
-
-		this.prevValue = this.initValue
-	},
-}
+	}
 </script>
 
-<style>
+<style lang="scss">
+	.b-price {
+		width: inherit;
+		display: flex;
+		align-items: center;
 
+		&__input-box {
+			display: flex;
+			align-items: center;
+		}
+	}
+
+	.input-box {
+		width: auto;
+		position: relative;
+		border: 1px solid #cdcdcd;
+		background: #fff;
+		border-radius: 2px;
+
+		&__sign {
+			height: 100%;
+			width: 20px;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			font-family: auto;
+			font-size: 19px;
+			color: #5f5f5f;
+			position: absolute;
+			user-select: none;
+		}
+
+		&__price {
+			width: inherit;
+			font-size: 14px;
+			padding: 0;
+			border: none;
+			outline: none;
+			background: none;
+		}
+	}
 </style>

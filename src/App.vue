@@ -7,10 +7,12 @@
 
 		outer: {{ data.value }}
 
+		<h3>v-i</h3>
 		<v-input
-			:maxNumAfterComma="0"
+			:decimal="3"
 			:value="mValue"
 			v-model="mValue"
+			:width="'100%'"
 		/>
 
 		outer: {{ mValue }}
@@ -20,6 +22,7 @@
 			:decimal="4"
 		/> -->
 
+		<h3>n-i</h3>
 		<n-input
 			v-model="nValue"
 			:decimal="2"
@@ -46,7 +49,7 @@ export default {
 	},
 	data: () => ({
 		data: { value: 2.420 },
-		mValue: 154655.315,
+		mValue: 154655.12,
 		kValue: 154655.315,
 		nValue: 12312322012.44,
 	}),
