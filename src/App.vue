@@ -1,15 +1,15 @@
 <template>
 	<div class="container">
 		<c-input
-			:dataRef="data"
-			field="value"
+			:value="cValue"
+			v-model="cValue"
 		/>
 
 		outer: {{ data.value }}
 
 		<h3>v-i</h3>
 		<v-input
-			:decimal="3"
+			:decimal="1"
 			:value="mValue"
 			v-model="mValue"
 			:width="'100%'"
@@ -23,11 +23,10 @@
 		/> -->
 
 		<h3>n-i</h3>
-		<n-input
+		<!-- <n-input
 			v-model="nValue"
-			:decimal="2"
-			:value="nValue"
-		/>
+			:decimal="3"
+		/> -->
 
 		input: {{ nValue }}
 	</div>
@@ -49,9 +48,10 @@ export default {
 	},
 	data: () => ({
 		data: { value: 2.420 },
+		cValue: 1.254,
 		mValue: 154655.12,
 		kValue: 154655.315,
-		nValue: 12312322012.44,
+		nValue: 12.44,
 	}),
 	watch: {
 		'data.value'(val) {

@@ -81,10 +81,11 @@ export default {
 			return Number(val.replace(/ /g, '').replace(/,/, '.'))
 		},
 		toInput(val) {
-			// console.log({val})
+			console.log(val)
 			const value = String(val)
 				.replace(/[^\d,\.]/g, '')
-				.replace(/[,\.]/, ',')
+				.replace(/[,\.]/g, ',')
+			console.log({value}, this.selection)
 
 			let parseValue = null
 			
@@ -92,28 +93,35 @@ export default {
 				parseValue = value.indexOf(',') !== -1
 					? value.slice(0, value.indexOf(','))
 					: value
-				console.log('!dec', parseValue)
 			} else {
-				const afterComma = value.slice(value.indexOf(',') + 1);
-				console.log('dec', value, afterComma, String(Number(value.replace(/,/, '.')).toFixed(this.decimal)).replace(/\./, ',') )
-				parseValue = Number(afterComma) > this.decimal
-					? String(Number(value.replace(/,/, '.')).toFixed(this.decimal)).replace(/\./, ',')
-					: value.slice(0, -(this.decimal + 1))
+				let wMoreComma = value.split('')
+				console.log(value[this.selection[0]])
+				if (value[this.selection[0]] && value[this.selection[0]].indexOf(',') !== -1) {
+					wMoreComma.splice(this.selection[0], 1)
+				}
+				console.log('tmp', wMoreComma)
+				// console.log('v', value[this.selection[0]])
+				const afterComma = wMoreComma.join('').slice(wMoreComma.indexOf(',') + 1);
+
+				if (this.decimal >= afterComma.length) {
+					// console.log('d>ac: ', tmp)
+					parseValue = String(Number(wMoreComma.join('').replace(/,/, '.')).toFixed(this.decimal)).replace(/\./, ',')
+				} else {
+					parseValue = wMoreComma.join('').slice(0, -(this.decimal + 1))
+				}
+				
+				// parseValue = this.decimal >= afterComma.length // tut o4ko
+				// 	? String(Number(value.replace(/,/, '.')).toFixed(this.decimal)).replace(/\./, ',')
+				// 	: value.slice(0, -(this.decimal + 1))
 			}
 
-			// console.log({parseValue})
-			// return
-		
+			console.log({parseValue})
+
 			const newArrValue = []
 			const arrValue = parseValue.split('')
-			console.log({arrValue})
-			let wholePart = arrValue.indexOf(',') !== -1
+			const wholePart = arrValue.indexOf(',') !== -1
 				? arrValue.splice(0, arrValue.indexOf(','))
 				: arrValue.splice(0)
-			// на выходе вроде все ок, но при удалении шляпа
-
-			// console.log({wholePart, arrValue})
-			// return
 
 			for (let i = wholePart.length; i > 0; i -= 3) {
 				i - 3 >= 0
@@ -121,7 +129,6 @@ export default {
 					: newArrValue.unshift(...wholePart)
 			}
 			newArrValue.push(...arrValue)
-			console.log('preres: ', newArrValue.join('').trim())
 			return newArrValue.join('').trim()
 		},
 		trigger(e) {
