@@ -59,6 +59,7 @@ export default {
 				const pos = /^\d{3}$/g.test(target.value.slice(0, 3)) ? 1 : 0
 				console.log('isDeletes')
 				if (this.isBackspace) {
+					console.log('here')
 					target.setSelectionRange(
 						this.selection[0] - 1 - pos,
 						this.selection[1] - 1 - pos
