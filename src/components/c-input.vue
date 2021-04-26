@@ -34,8 +34,6 @@
 			input(e) {
 				const { target } = e
 
-				console.log(this.selection.s, this.selection.e, target.value)
-
 				if (!(/,/.test(target.value)) && this.decimal) {
 					console.log('comma')
 					const nArr = target.value.split(''),
@@ -45,14 +43,16 @@
 				}
 
 				target.value = this.setSeparatorSpace(this.parseValue(target.value))
-				let currSide = this.selection.s >= target.value.length - this.decimal ? 'right' : 'left'
-				console.log({ currSide }, this.isSeparator, this.isNumeric)
+				console.log(this.selection.s - 1, target.value.indexOf(','), target.value, target.selectionStart)
+				let currSide = target.value.indexOf(',') + 1 > this.selection.s - 1 ? 'left' : 'right'
 
 
 				if (!this.isInteger) {
 					if (this.isDeletes) {
-						const pos = /^\d{3}/.test(target.value.slice(0, 3)) && currSide === 'left' ? 1 : 0
-						console.log('isDeletes')
+						const pos = /^\d{3}/.test(target.value) && currSide === 'left'
+							? 1
+							: 0
+							console.log('isDeletes', pos, /^\d{3}/.test(target.value), currSide)
 						if (this.isBackspace) {
 							target.setSelectionRange(
 								this.selection.s - 1 - pos,
@@ -95,6 +95,7 @@
 			},
 			parseValue(val) {
 				const sValue = String(val).replace(/ /g, '')
+				console.log({sValue})
 
 				if (this.isInteger) {
 					return sValue.replace(/[^\d]/g, '')
