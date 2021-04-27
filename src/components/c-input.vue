@@ -36,61 +36,148 @@
 
 				if (!(/,/.test(target.value)) && this.decimal) {
 					console.log('comma')
-					const nArr = target.value.split(''),
-							pos = target.value.length - this.decimal - 1
-					nArr.splice(-this.decimal, 0, ',')
-					target.value = nArr.join('')
+					// const nArr = target.value.split(''),
+					// 		pos = target.value.length - this.decimal - 1
+					// nArr.splice(-this.decimal, 0, ',')
+					// target.value = nArr.join('')
+
+					target.value = this.prevValue
 				}
 
 				target.value = this.setSeparatorSpace(this.parseValue(target.value))
-				console.log(this.selection.s - 1, target.value.indexOf(','), target.value, target.selectionStart)
-				let currSide = target.value.indexOf(',') + 1 > this.selection.s - 1 ? 'left' : 'right'
 
+				// console.log(this.selection.s - 1, target.value.indexOf(','), target.value, target.selectionStart)
+				// const l = target.value.slice(0, target.value.indexOf(','))
+				// const r = target.value.slice(-(this.decimal))
+				// console.log({r, l}, this.selection.s - 1, 'l:', l.length, 'tv:', target.value.length, 's: ', this.selection.s, target.selectionStart)
+				// const o = {
+				// 	left: l.split('').map((c, i) => i + 1),
+				// 	right: r.split('').map((c, i) => i + 1 + r.length),
+				// 	comma: [l.length + 1]
+				// }
 
-				if (!this.isInteger) {
-					if (this.isDeletes) {
-						const pos = /^\d{3}/.test(target.value) && currSide === 'left'
-							? 1
-							: 0
-							console.log('isDeletes', pos, /^\d{3}/.test(target.value), currSide)
-						if (this.isBackspace) {
-							target.setSelectionRange(
-								this.selection.s - 1 - pos,
-								this.selection.e - 1 - pos
-							)
-						} else {
-							console.log('backwa', /^0,\d+$/.test(target.value), target.value)
-							const pos = /^0,\d+$/.test(target.value) ? 1 : 0
-							
-							target.setSelectionRange(this.selection.s + pos, this.selection.e + pos)
-						}
-					} else {
-						if (this.isSeparator) {
-							// позиционирование для точки или запятой
-							const indexComma = target.value.indexOf(',') + 1
-							target.setSelectionRange(indexComma, indexComma)
-						} else if (this.isNumeric) {
-							// позиционирование только для добавления чисел
-							console.log('HERE: ', /^\d{1} /.test(target.value), target.value, /^\d{1},/.test(target.value))
-							if ( /^\d{1},/.test(target.value)) {
-								console.log('nul')
-								target.setSelectionRange(this.selection.s, this.selection.e)
-							} else {
-								const pos = /^\d{1} /.test(target.value) && currSide === 'left' ? 1 : 0
+				// console.log({o}, this.selection.s)
+				// let test = null
+				// Object.entries(o).map(curr => {
+				// 	const [side, pos] = curr
+				// 	if (pos.includes(this.selection.s)) {
+				// 		console.log({side})
+				// 		test = side
+				// 	}
+				// })
+
+				// let currSide = this.selection.s - 1 > target.value.length - this.decimal ? 'right' : 'left'
+				const left = target.value.slice(0, target.value.indexOf(','))
+				let currSide = this.selection.s > left.length + left.length - left.replace(/ /g, '').length ? 'right' : 'left'
+				console.log(target.value.slice(0, target.value.indexOf(',')).length, target.value.indexOf(','), this.selection.s) // i1,s2 / i2,s3 / i2,s4
+
+				const isLeftExist = left.slice(0, 3) === left.replace(/ /g, '').slice(0, 3)
+				console.log({currSide}, left, left.replace(/ /g, ''), left.slice(0, 3) === left.replace(/ /g, '').slice(0, 3), left.length - left.replace(/ /g, '').length)
+
+				if (this.isDeletes) {
+					// console.log({test})
+					if (this.isBackspace) {
+						switch (currSide) {
+							case 'left':
+								const p1 =  /^\d{3}/.test(target.value) ? 1 : 0
+								const test = isLeftExist ? 1 : 0
+								console.log('backw/left', test, p1)
+								target.setSelectionRange(
+									this.selection.s - 1 - p1,
+									this.selection.e - 1 - p1,
+									// this.selection.e - p1
+									// this.selection.e - p1
+								)
+								break;
+							case 'right':
+								// const p =  /^\d{3}/.test(target.value) ? 1 : 0
+								// const p2 =  /^\d{2} /.test(target.value) ? 1 : 0
+								// const p3 =  /^\d{1} \d{1}/.test(target.value) ? 1 : 0
+								// console.log('backw/right', p, p2, p3)
+								console.log('backw/right')
 								
 								target.setSelectionRange(
-									this.selection.s + 1 + pos,
-									this.selection.e + 1 + pos
+									this.selection.s - 1,
+									this.selection.e - 1
+									// this.selection.s - p - p2 - p3,
+									// this.selection.e - p - p2 - p3
 								)
-							}
-						} else {
-							// вся белеберда кроме запятой, точки и числа
-							target.setSelectionRange(this.selection.s, this.selection.e)
+								console.log(this.selection.s, this.selection.e)
+								break;
 						}
 					}
 				} else {
-					console.log('here')
+					console.log('ELSE')
+					// target.setSelectionRange(
+					// 	this.selection.s - 1,
+					// 	this.selection.e - 1
+					// )
+					switch (currSide) {
+						case 'left':
+							const p = /^\d{1} /.test(target.value) ? 1 : 0
+							// если пред один ноль
+							const p2 = /^\d{1},/.test(target.value) ? 0 : 1
+							console.log('add/left', {p}, p2)
+							// if ()
+							target.setSelectionRange(this.selection.s + p2 + p, this.selection.e + p2 + p)
+							break;
+						case 'right':
+							console.log('add/right')
+							break;
+						case 'comma':
+							console.log('add/comma')
+							break;
+					}
 				}
+
+				
+
+				// if (!this.isInteger) {
+				// 	if (this.isDeletes) {
+				// 		console.log('del', target.value)
+
+				// 		// const pos = /^\d{1} /.test(target.value)
+				// 		// 	? 1
+				// 		// 	: 0
+				// 		// 	console.log('isDeletes', pos, /^\d{3}/.test(target.value), currSide)
+				// 		// if (this.isBackspace) {
+				// 		// 	target.setSelectionRange(
+				// 		// 		this.selection.s - 1,
+				// 		// 		this.selection.e - 1
+				// 		// 	)
+				// 		// } else {
+				// 		// 	console.log('backwa', /^0,\d+$/.test(target.value), target.value)
+				// 		// 	const pos = /^0,\d+$/.test(target.value) ? 1 : 0
+							
+				// 		// 	target.setSelectionRange(this.selection.s + pos, this.selection.e + pos)
+				// 		// }
+				// 	} else {
+				// 		if (this.isSeparator) {
+				// 			// позиционирование для точки или запятой
+				// 			const indexComma = target.value.indexOf(',') + 1
+				// 			target.setSelectionRange(indexComma, indexComma)
+				// 		} else if (this.isNumeric) {
+				// 			// позиционирование только для добавления чисел
+				// 			console.log('HERE: ', /^\d{1} /.test(target.value), target.value, /^\d{1},/.test(target.value))
+				// 			if ( /^\d{1},/.test(target.value)) {
+				// 				console.log('nul')
+				// 				target.setSelectionRange(this.selection.s, this.selection.e)
+				// 			} else {
+				// 				const pos = /^\d{1} /.test(target.value) && currSide === 'left' ? 1 : 0
+								
+				// 				target.setSelectionRange(
+				// 					this.selection.s + 1 + pos,
+				// 					this.selection.e + 1 + pos
+				// 				)
+				// 			}
+				// 		} else {
+				// 			// вся белеберда кроме запятой, точки и числа
+				// 			target.setSelectionRange(this.selection.s, this.selection.e)
+				// 		}
+				// 	}
+				// } else {
+				// 	console.log('here')
+				// }
 				
 			},
 			parseValue(val) {
