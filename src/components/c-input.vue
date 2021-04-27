@@ -45,6 +45,7 @@
 				}
 
 				target.value = this.setSeparatorSpace(this.parseValue(target.value))
+				// target.value = this.parseValue(target.value)
 
 				// console.log(this.selection.s - 1, target.value.indexOf(','), target.value, target.selectionStart)
 				// const l = target.value.slice(0, target.value.indexOf(','))
@@ -68,11 +69,22 @@
 
 				// let currSide = this.selection.s - 1 > target.value.length - this.decimal ? 'right' : 'left'
 				const left = target.value.slice(0, target.value.indexOf(','))
-				let currSide = this.selection.s > left.length + left.length - left.replace(/ /g, '').length ? 'right' : 'left'
-				console.log(target.value.slice(0, target.value.indexOf(',')).length, target.value.indexOf(','), this.selection.s) // i1,s2 / i2,s3 / i2,s4
+				console.log(
+					{left},
+					target.value.length - this.decimal - 1,
+					{left: left.length},
+					'selection: ', this.selection.s,
+					'selection+: ', this.selection.s + (left.length - left.replace(/ /g, '').length),
+					'v1: ', this.selection.s > target.value.length - this.decimal ? 'RR' : 'LL',
+					this.selection.s + left.length - left.replace(/ /g, '').length < left.length ? 'R' : 'L',
+					target.selectionStart
+				)
+				// let currSide = this.selection.s > left.length + left.length - left.replace(/ /g, '').length ? 'right' : 'left'
+				// console.log(target.value.slice(0, target.value.indexOf(',')).length, target.value.indexOf(','), this.selection.s) // i1,s2 / i2,s3 / i2,s4
+				let currSide = target.value.length - this.decimal - 1 >= target.selectionStart ? 'left' : 'right'
 
 				const isLeftExist = left.slice(0, 3) === left.replace(/ /g, '').slice(0, 3)
-				console.log({currSide}, left, left.replace(/ /g, ''), left.slice(0, 3) === left.replace(/ /g, '').slice(0, 3), left.length - left.replace(/ /g, '').length)
+				console.log({currSide})
 
 				if (this.isDeletes) {
 					// console.log({test})
@@ -122,6 +134,8 @@
 							target.setSelectionRange(this.selection.s + p2 + p, this.selection.e + p2 + p)
 							break;
 						case 'right':
+							const rp = /^\d{1} /.test(target.value) ? 1 : 0
+							target.setSelectionRange(this.selection.s + rp + 1, this.selection.e + rp + 1)
 							console.log('add/right')
 							break;
 						case 'comma':
