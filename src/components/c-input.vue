@@ -44,6 +44,7 @@
 					target.value = this.prevValue
 				}
 
+				console.log('TV:', target.value)
 				target.value = this.setSeparatorSpace(this.parseValue(target.value))
 				// target.value = this.parseValue(target.value)
 
@@ -69,19 +70,23 @@
 
 				// let currSide = this.selection.s - 1 > target.value.length - this.decimal ? 'right' : 'left'
 				const left = target.value.slice(0, target.value.indexOf(','))
-				console.log(
-					{left},
-					target.value.length - this.decimal - 1,
-					{left: left.length},
-					'selection: ', this.selection.s,
-					'selection+: ', this.selection.s + (left.length - left.replace(/ /g, '').length),
-					'v1: ', this.selection.s > target.value.length - this.decimal ? 'RR' : 'LL',
-					this.selection.s + left.length - left.replace(/ /g, '').length < left.length ? 'R' : 'L',
-					target.selectionStart
-				)
+
+				console.log({
+					left,
+					leftLength: left.length,
+					targLength: target.value.length,
+					leftSide: target.value.length - this.decimal,
+					selection: this.selection.s,
+					selectionPlus: this.selection.s + (left.length - left.replace(/ /g, '').length),
+					// offset: (left.length - left.replace(/ /g, '').length),
+				})
+
+				/**
+				 * отталкиваться от запятой чтоли хз +- работает
+				 */
 				// let currSide = this.selection.s > left.length + left.length - left.replace(/ /g, '').length ? 'right' : 'left'
 				// console.log(target.value.slice(0, target.value.indexOf(',')).length, target.value.indexOf(','), this.selection.s) // i1,s2 / i2,s3 / i2,s4
-				let currSide = target.value.length - this.decimal - 1 >= target.selectionStart ? 'left' : 'right'
+				let currSide = target.value.length - 1 > this.selection.s ? 'left' : 'right'
 
 				const isLeftExist = left.slice(0, 3) === left.replace(/ /g, '').slice(0, 3)
 				console.log({currSide})
@@ -92,8 +97,9 @@
 						switch (currSide) {
 							case 'left':
 								const p1 =  /^\d{3}/.test(target.value) ? 1 : 0
-								const test = isLeftExist ? 1 : 0
-								console.log('backw/left', test, p1)
+								// const test = isLeftExist ? 1 : 0
+								
+								console.log('backw/left', p1)
 								target.setSelectionRange(
 									this.selection.s - 1 - p1,
 									this.selection.e - 1 - p1,
@@ -126,20 +132,17 @@
 					// )
 					switch (currSide) {
 						case 'left':
+							let offset = left.length - left.replace(/ /g, '').length
 							const p = /^\d{1} /.test(target.value) ? 1 : 0
 							// если пред один ноль
 							const p2 = /^\d{1},/.test(target.value) ? 0 : 1
-							console.log('add/left', {p}, p2)
-							// if ()
+							console.log('add/left', p, p2)
 							target.setSelectionRange(this.selection.s + p2 + p, this.selection.e + p2 + p)
 							break;
 						case 'right':
-							const rp = /^\d{1} /.test(target.value) ? 1 : 0
-							target.setSelectionRange(this.selection.s + rp + 1, this.selection.e + rp + 1)
+							// const rp = /^\d{1} /.test(target.value) ? 1 : 0
+							target.setSelectionRange(this.selection.s + 1, this.selection.e + 1)
 							console.log('add/right')
-							break;
-						case 'comma':
-							console.log('add/comma')
 							break;
 					}
 				}
@@ -269,12 +272,13 @@
 			
 			if (!this.isInteger) {
 				const sValue = String(value)
+				console.log({sV: sValue})
 				this.initDecimalLength = sValue.slice(sValue.indexOf('.') + 1).length
 			}
 				
 			this.initValue = this.decimal
-				? this.parseValue(value)
-				: this.parseValue(Math.floor(value))
+				? this.setSeparatorSpace(this.parseValue(value))
+				: this.setSeparatorSpace(this.parseValue(Math.floor(value)))
 		}
 	}
 </script>
