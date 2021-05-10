@@ -1,12 +1,17 @@
 <template>
 	<div class="container">
-		<c-input
-			:decimal="3"
-			:value="cValue"
+		<input-numeric
+			:decimal="decimal"
 			v-model="cValue"
 		/>
+		
+		<!-- <c-input
+			:decimal="decimal"
+			v-model="cValue"
+		/> -->
+			<!-- :value="cValue" -->
 
-		outer: {{ data.value }}
+		outer: {{ cValue }}
 
 		<h3>v-i</h3>
 		<v-input
@@ -34,6 +39,7 @@
 </template>
 
 <script>
+import inputNumeric from './components/input-numeric'
 import cInput from './components/c-input'
 import vInput from './components/v-input'
 import kInput from './components/k-input'
@@ -43,13 +49,15 @@ export default {
 	name: 'App',
 	components: {
 		cInput,
+		inputNumeric,
 		vInput,
 		kInput,
-		nInput
+		nInput,
 	},
 	data: () => ({
 		data: { value: 2.420 },
-		cValue: 14.22,
+		cValue: 14.21,
+		decimal: 3,
 		mValue: 154655.12,
 		kValue: 154655.315,
 		nValue: 1.44,
