@@ -43,10 +43,27 @@ export default {
 			const convertedValue = this.convertValue(target.value),
 					numericValue = Number(convertedValue.replace(/,/, '.'))
 
-			target.value = this.separatorValue(convertedValue)
 			this.$emit('input', numericValue)
+
+			// new Promise(resolve => resolve())
+				// .then(() => {
+					target.value = this.separatorValue(convertedValue)
+
+					const currOffset = target.value.length - target.value.replace(/ /g, '').length,
+							resOffset = this.prevOffset === currOffset ? 0 : 1,
+							selectionValue = this.prevValue.slice(this.selection.s, this.selection.e),
+							isSpace = selectionValue.match(/ /g) ? 1 : 0
+
+					this.prevOffset = currOffset
+					console.log(this.step, resOffset, this.isNumeric, this.prevOffset, selectionValue)
+					if (this.isBackspace || this.isGroupSelected) {
+						target.setSelectionRange(this.step - resOffset + isSpace, this.step - resOffset + isSpace)
+					} else {
+						target.setSelectionRange(this.step + resOffset, this.step + resOffset)
+					}
+				// })
 			 
-			this.setCursorPosition(target)
+			// this.setCursorPosition(target)
 		},
 		initialValue(value, iDecimal) {
 			const toNumber = typeof value === 'string'
