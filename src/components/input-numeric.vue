@@ -42,28 +42,18 @@ export default {
 
 			const convertedValue = this.convertValue(target.value),
 					numericValue = Number(convertedValue.replace(/,/, '.'))
+			
+			if (numericValue > Math.pow(10, 10)) {
+				target.value = this.prevValue
+				target.setSelectionRange(this.step - 1, this.step - 1)
+				// запятые, точки, буквы раскидать
+				return
+			}
 
+			target.value = this.separatorValue(convertedValue)
 			this.$emit('input', numericValue)
 
-			// new Promise(resolve => resolve())
-				// .then(() => {
-					target.value = this.separatorValue(convertedValue)
-
-					const currOffset = target.value.length - target.value.replace(/ /g, '').length,
-							resOffset = this.prevOffset === currOffset ? 0 : 1,
-							selectionValue = this.prevValue.slice(this.selection.s, this.selection.e),
-							isSpace = selectionValue.match(/ /g) ? 1 : 0
-
-					this.prevOffset = currOffset
-					console.log(this.step, resOffset, this.isNumeric, this.prevOffset, selectionValue)
-					if (this.isBackspace || this.isGroupSelected) {
-						target.setSelectionRange(this.step - resOffset + isSpace, this.step - resOffset + isSpace)
-					} else {
-						target.setSelectionRange(this.step + resOffset, this.step + resOffset)
-					}
-				// })
-			 
-			// this.setCursorPosition(target)
+			this.setCursorPos(target)
 		},
 		initialValue(value, iDecimal) {
 			const toNumber = typeof value === 'string'
@@ -73,7 +63,6 @@ export default {
 			return toNumber.toFixed(iDecimal).replace(/\./, ',')
 		},
 		convertValue(value) {
-			console.log('enter converValue', value)
 			const unSeparateValue = value.replace(/ /g, '')
 
 			if (this.isInteger) {
@@ -135,6 +124,40 @@ export default {
 			}
 			newArrValue.push(...arrValue)
 			return newArrValue.join('').trim()
+		},
+		setCursorPos(target) {
+			const currOffset = target.value.length - target.value.replace(/ /g, '').length,
+					leftSideIndex = target.value.length - this.iDecimal - 1,
+					leftSide = target.value.slice(0, leftSideIndex),
+					formatLeftSide = Number(leftSide.replace(/ /g, '')),
+					resOffset = this.prevOffset === currOffset ? 0 : 1,
+					selectionValue = this.prevValue.slice(this.selection.s, this.selection.e),
+					arrPrevVal = this.prevValue.split(''),
+					splicedVal = arrPrevVal.splice(this.selection.s, this.selection.e),
+					selectionSpace = selectionValue.match(/ /g) ? 1 : 0
+
+			this.prevOffset = currOffset
+			console.log(this.step, this.prevOffset, {selectionValue}, leftSideIndex, formatLeftSide, leftSide, selectionSpace, this.selection.s, this.prevValue, resOffset, target.value, arrPrevVal, splicedVal)
+
+
+			if (this.isDeletes) {
+				if (this.isBackspace) {
+					if (this.isGroupSelected) {
+						// this.step -= resOffset
+					} else {
+						this.step = (this.step - resOffset) === 0 || (this.step - resOffset) === -1
+							? this.step === 0 && formatLeftSide === 0 ? 1 : 0
+							: this.step - resOffset
+					}
+				} else {
+					
+				}
+			} else {
+				console.log('add')
+				this.step = leftSideIndex === 1 && this.step <= 2 ? 1 : this.step + resOffset
+			}
+
+			target.setSelectionRange(this.step, this.step)
 		},
 		setCursorPosition(target) {
 			const leftSide = target.value.length - this.iDecimal - 1,
