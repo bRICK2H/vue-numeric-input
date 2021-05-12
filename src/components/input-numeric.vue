@@ -131,19 +131,25 @@ export default {
 					leftSide = target.value.slice(0, leftSideIndex),
 					formatLeftSide = Number(leftSide.replace(/ /g, '')),
 					resOffset = this.prevOffset === currOffset ? 0 : 1,
-					selectionValue = this.prevValue.slice(this.selection.s, this.selection.e),
-					arrPrevVal = this.prevValue.split(''),
-					splicedVal = arrPrevVal.splice(this.selection.s, this.selection.e),
-					selectionSpace = selectionValue.match(/ /g) ? 1 : 0
+					restVal = this.prevValue.split('')
 
 			this.prevOffset = currOffset
-			console.log(this.step, this.prevOffset, {selectionValue}, leftSideIndex, formatLeftSide, leftSide, selectionSpace, this.selection.s, this.prevValue, resOffset, target.value, arrPrevVal, splicedVal)
+			// console.log(this.step, this.prevOffset, leftSideIndex, formatLeftSide, leftSide, this.selection.s, this.prevValue, resOffset, target.value, {restVal})
 
+			
 
 			if (this.isDeletes) {
 				if (this.isBackspace) {
 					if (this.isGroupSelected) {
 						// this.step -= resOffset
+						const x = restVal.join('').match(/ /g) ? restVal.join('').match(/ /g).length : 0
+						const y = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
+
+						console.log({restVal, x}, {tv: target.value, y})
+						if (x > y) {
+							console.log('x>y')
+							this.step -= 1
+						}
 					} else {
 						this.step = (this.step - resOffset) === 0 || (this.step - resOffset) === -1
 							? this.step === 0 && formatLeftSide === 0 ? 1 : 0
@@ -154,7 +160,20 @@ export default {
 				}
 			} else {
 				console.log('add')
-				this.step = leftSideIndex === 1 && this.step <= 2 ? 1 : this.step + resOffset
+				if (this.isGroupSelected) {
+					const x = restVal.join('').match(/ /g) ? restVal.join('').match(/ /g).length : 0
+					const y = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
+
+					console.log({restVal, x}, {tv: target.value, y})
+					if (x > y) {
+						console.log('x>y')
+						this.step -= 1
+					} else if (x < y) {
+						this.step += 1
+					}
+				} else {
+					this.step = leftSideIndex === 1 && this.step <= 2 ? 1 : this.step + resOffset
+				}
 			}
 
 			target.setSelectionRange(this.step, this.step)
