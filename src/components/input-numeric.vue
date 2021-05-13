@@ -12,7 +12,7 @@ export default {
 	props: {
 		value: {
 			type: [String, Number],
-			default: 0
+			default: 0,
 		},
 		decimal: {
 			type: [String, Number],
@@ -26,9 +26,11 @@ export default {
 		iDecimal: 0,
 		prevOffset: 0,
 		selection: { s: 0, e: 0 },
-		isGroupSelected: false,
+		isSelectableValue: false,
 		isInteger: false,
 		isDelimiter: false,
+		isPressedMinus: false,
+		isToggleMinus: false,
 		isNumeric: false,
 		isDeletes: false,
 		isDelete: false,
@@ -41,19 +43,23 @@ export default {
 			this.step = target.selectionStart
 
 			const convertedValue = this.convertValue(target.value),
-					numericValue = Number(convertedValue.replace(/,/, '.'))
-			
-			if (numericValue > Math.pow(10, 10)) {
+					numericValue = this.isInteger
+						? convertedValue
+						: Number(convertedValue.replace(/,/, '.')),
+					isNegativeValue = /-/.test(convertedValue),
+					isMaxPositive = !isNegativeValue && numericValue > Math.pow(10, 10),
+					isMaxNegative = isNegativeValue && numericValue < -Math.pow(10, 10)
+
+			if (isMaxPositive || isMaxNegative) {
 				target.value = this.prevValue
 				target.setSelectionRange(this.step - 1, this.step - 1)
-				// запятые, точки, буквы раскидать
 				return
 			}
 
 			target.value = this.separatorValue(convertedValue)
 			this.$emit('input', numericValue)
 
-			this.setCursorPos(target)
+			this.setCursorPosition(target)
 		},
 		initialValue(value, iDecimal) {
 			const toNumber = typeof value === 'string'
@@ -63,51 +69,79 @@ export default {
 			return toNumber.toFixed(iDecimal).replace(/\./, ',')
 		},
 		convertValue(value) {
+			const definedNegativeOrPositiveValue = value => {
+				let val = String(value).replace(/ /g, '').replace(/,/, '.').replace(/[^\d\.]/, '')
+				val = this.isToggleMinus ? val * -1 : val * 1
+
+				console.log({val})
+				/**
+				 * По минусу
+				 * 1. Сепаратор работает в некоторых моментах не правильно, создает лишний пробел
+				 * 2. Так же при добовлении минуса съезжает курсор
+				 * 3. При выделении значений числа, не должно ничего удаляться, должно сниматься выделение и тоглиться отр и полож знач.
+				 * 4. Не удаляется минут через backspase
+				 */
+				
+				return Number(val).toFixed(this.iDecimal).replace(/\./, ',')
+			}
+			
 			const unSeparateValue = value.replace(/ /g, '')
 
 			if (this.isInteger) {
 				const clearValue = unSeparateValue.replace(/[^\d]/g, '')
-				return Number(clearValue)
+				return definedNegativeOrPositiveValue(Number(clearValue))
 			} else {
 				const isExistComma = /,/.test(value),
-						isNumeric = Number(unSeparateValue.replace(/,/, '.'))
+						currNumeric = Number(unSeparateValue.replace(/,/, '.')),
+						isCurrNumeric = !isNaN(currNumeric)
 
-				if (this.isDelimiter && !this.isGroupSelected) {
-					console.log('here?', value, this.step - 1)
-					const arrValue = value.split('')
-					arrValue.splice(this.step - 1, 1)
+				const	convertSelectableValue = value => {
+					const spaceCount = value.match(/ /g) ? value.match(/ /g).length : 0,
+							clearValue = String(Number(value.replace(/[^\d]/g, ''))),
+							arrValue = clearValue.split('')
 
-					return arrValue.join('').replace(/ /g, '')
+					arrValue.splice(this.isDelimiter ? this.step - 1 : this.step - spaceCount, 0, '.')
+					const fixedValue = Number(arrValue.join('').replace(/ /g, '')).toFixed(this.iDecimal)
+
+					return fixedValue.replace(/\./, ',')
 				}
 
+
 				if (!isExistComma) {
-					console.log('!isExistComma', value)
-					if (!this.isGroupSelected) {
+					if (!this.isSelectableValue) {
 						return this.prevValue.replace(/ /g, '')
 					} else {
-						if (isNaN(isNumeric)) {
+						if (!isCurrNumeric) {
 							return this.prevValue.replace(/ /g, '')
 						} 	else {
-							const spaceCount = value.match(/ /g) ? value.match(/ /g).length : 0,
-									clearValue = String(Number(value.replace(/[^\d]/g, ''))),
-									arrValue = clearValue.split('')
+							return convertSelectableValue(value)
+						}
+					}
+				} else {
+					if (!this.isDelimiter) {
+						const clearValue = unSeparateValue.replace(/[^\d,]/g, '')
+						const fixedValue = Number(clearValue.replace(/,/, '.')).toFixed(this.iDecimal)
+	
+						return fixedValue.replace(/\./, ',')
+					}
 
-							arrValue.splice(this.isDelimiter ? this.step - 1 : this.step - spaceCount, 0, '.')
-							const fixedValue = Number(arrValue.join('').replace(/ /g, '')).toFixed(this.iDecimal)
+					if (!this.isSelectableValue) {
+						if (this.isDelimiter) {
+							const arrValue = value.split('')
+							arrValue.splice(this.step - 1, 1)
 
-							return fixedValue.replace(/\./, ',')
+							return arrValue.join('').replace(/ /g, '')
+						}
+					} else {
+						if (!isCurrNumeric && !this.isDelimiter) {
+							return this.prevValue.replace(/ /g, '')
+						}
+
+						if (this.isDelimiter) {
+							return convertSelectableValue(value)
 						}
 					}
 				}
-
-				if(isNaN(isNumeric) && this.isGroupSelected && !this.isDelimiter) {
-					return this.prevValue.replace(/ /g, '')
-				}
-
-				const clearValue = unSeparateValue.replace(/[^\d,]/g, '')
-				const fixedValue = Number(clearValue.replace(/,/, '.')).toFixed(this.iDecimal)
-
-				return fixedValue.replace(/\./, ',')
 			}
 		},
 		separatorValue(value) {
@@ -125,80 +159,56 @@ export default {
 			newArrValue.push(...arrValue)
 			return newArrValue.join('').trim()
 		},
-		setCursorPos(target) {
+		setCursorPosition(target) {
 			const currOffset = target.value.length - target.value.replace(/ /g, '').length,
+					offsetLengthSpace = this.prevOffset === currOffset ? 0 : 1,
 					leftSideIndex = target.value.length - this.iDecimal - 1,
 					leftSide = target.value.slice(0, leftSideIndex),
-					formatLeftSide = Number(leftSide.replace(/ /g, '')),
-					resOffset = this.prevOffset === currOffset ? 0 : 1,
-					restVal = this.prevValue.split('')
-
+					formatLeftSide = Number(leftSide.replace(/ /g, ''))
+					
 			this.prevOffset = currOffset
-			// console.log(this.step, this.prevOffset, leftSideIndex, formatLeftSide, leftSide, this.selection.s, this.prevValue, resOffset, target.value, {restVal})
 
-			
+			// const for selectable value (del/del+add)
+			const restValueAfterDel = this.prevValue.split('')
+			restValueAfterDel.splice(this.selection.s, this.selection.e)
+			const prevLengthSpace = restValueAfterDel.join('').match(/ /g) ? restValueAfterDel.join('').match(/ /g).length : 0
+			const currLengthSpace = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
+
 
 			if (this.isDeletes) {
-				if (this.isBackspace) {
-					if (this.isGroupSelected) {
-						// this.step -= resOffset
-						const x = restVal.join('').match(/ /g) ? restVal.join('').match(/ /g).length : 0
-						const y = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
-
-						console.log({restVal, x}, {tv: target.value, y})
-						if (x > y) {
-							console.log('x>y')
-							this.step -= 1
+				if (this.isSelectableValue) {
+					if (!this.step) this.step = 1
+					if (prevLengthSpace > currLengthSpace) {
+						this.step -= 1
+					} else if (prevLengthSpace === currLengthSpace) {
+						const selectedValue = this.prevValue.slice(this.selection.s, this.selection.e)
+						const isSpace = Array.isArray(selectedValue.match(/ /g))
+						if (!isSpace) {
+							this.step -= offsetLengthSpace
+						}
+						
+						if (this.selection.s === 0 && formatLeftSide !== 0) {
+							this.step = 0
 						}
 					} else {
-						this.step = (this.step - resOffset) === 0 || (this.step - resOffset) === -1
+						if (/^\d{1} /.test(target.value) || /^\d{2} /.test(target.value)) {
+							this.step += 1
+						}
+					}
+				}
+				if (this.isBackspace) {
+					if (!this.isSelectableValue) {
+						this.step = (this.step - offsetLengthSpace) === 0 || (this.step - offsetLengthSpace) === -1
 							? this.step === 0 && formatLeftSide === 0 ? 1 : 0
-							: this.step - resOffset
+							: this.step - offsetLengthSpace
 					}
 				} else {
-					
-				}
-			} else {
-				console.log('add')
-				if (this.isGroupSelected) {
-					const x = restVal.join('').match(/ /g) ? restVal.join('').match(/ /g).length : 0
-					const y = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
-
-					console.log({restVal, x}, {tv: target.value, y})
-					if (x > y) {
-						console.log('x>y')
-						this.step -= 1
-					} else if (x < y) {
-						this.step += 1
-					}
-				} else {
-					this.step = leftSideIndex === 1 && this.step <= 2 ? 1 : this.step + resOffset
-				}
-			}
-
-			target.setSelectionRange(this.step, this.step)
-		},
-		setCursorPosition(target) {
-			const leftSide = target.value.length - this.iDecimal - 1,
-					isOneNumeric = leftSide === 1 && this.step === 2 || !this.step,
-					currOffset = target.value.length - target.value.replace(/ /g, '').length,
-					resOffset = this.prevOffset === currOffset ? 0 : 1
-
-			this.prevOffset = currOffset
-
-			if(this.isDeletes) {
-				if (this.isGroupSelected) {
-					console.log('cursor del isGroup')
-					
-				} else {
-					if(this.isBackspace) {
-						this.step = isOneNumeric ? 1 : this.step - resOffset
-					} else {
+					if (!this.isSelectableValue) {
 						const empty = ' '
 						const prevLeftSide = this.prevValue.length - this.iDecimal - 1
 	
 						if (this.step && prevLeftSide > this.step) {
-							this.step = this.prevValue[this.step] === empty ? this.step + 1 : this.step - resOffset
+							this.step = this.prevValue[this.step] === empty ? this.step + 1 : this.step - offsetLengthSpace
 						} else if (/^0/.test(target.value) && prevLeftSide > this.step) {
 							this.step = 1
 						} else if (this.step === prevLeftSide) {
@@ -206,78 +216,48 @@ export default {
 						}
 					}
 				}
-			} else if (this.isNumeric) {
-				if (this.isGroupSelected) {
-					const getLastIndexOfThree = value => {
-						return value.indexOf(' ') !== -1
-							? value.indexOf(' ')
-							: value.slice(0, 3).indexOf(',') !== -1
-								? value.indexOf(',')
-								: 3
-					}
-					console.log(target.value, this.prevValue)
-					const pieceOfValue = target.value.slice(0, getLastIndexOfThree(target.value))
-					const pieceOfPrevValue = this.prevValue.slice(0, getLastIndexOfThree(this.prevValue))
-					const selectionValue = this.prevValue.slice(this.selection.s, this.selection.e)
-					const spaceCount = selectionValue.match(/ /g)
-
-
-					if (spaceCount) {
-						console.log('has',
-							spaceCount,
-							{ prevSpace:  this.prevValue.match(/ /g) ? this.prevValue.match(/ /g).length : 0 },
-							{ currSpace: target.value.match(/ /g) ? target.value.match(/ /g).length : 0 },
-							{selection: this.selection.s },
-							{step: this.step }
-						)
-						const pv = this.prevValue.match(/ /g) ? this.prevValue.match(/ /g).length : 0
-						const v = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
-						const test = this.prevValue.slice(this.selection.s - 1, this.selection.e)[0]
-						console.log(`'${test}'`)
-
-						if(test === ' ' && (/^\d{2} /.test(target.value) || /^\d{3} /.test(target.value))) {
-							console.log('inner')
-							this.step -= 1
-						} else if (/^\d{1} /.test(target.value) || pieceOfValue.length === pieceOfPrevValue.length) {
-							console.log('1s') // в некоторых случаях дает лишний +1
-							this.step += 1
-						}
-						
-
-							// if (pv === v) {
-							// 	console.log('==')
-							// 	this.step += 1
-							// }
-
-
-						// this.step = this.selection.s
-						// this.step = pieceOfValue.length < pieceOfPrevValue.length
-						// 	? spaceCount.length === 1 ? this.step + 1 : this.step
-						// 	: spaceCount.length === 1 ? this.step : this.step + 1
-					} else {
-						console.log('nt', spaceCount)
-						this.step = pieceOfValue.length > pieceOfPrevValue.length
-							? this.step - 1
-							: this.step
-					}
-					// if(pieceOfValue.length < pieceOfPrevValue.length) {
-					// 	console.log('???')
-					// 	this.step += 1
-					// } else if (!selectionValue.match(/ /g) && pieceOfValue.length > pieceOfPrevValue.length) {
-					// 	console.log('!!!')
-					// 	this.step -= 1
-					// }
-					console.log({pieceOfValue}, {pieceOfPrevValue}, {selectionValue})
-
-				} else {
-					this.step = isOneNumeric ? 1 : this.step + resOffset
-				}
-			} else if (this.isDelimiter) {
-				this.step = leftSide + 1
+				
 			} else {
-				this.step -= 1
-			}
+				if (this.isNumeric) {
+					if (this.isSelectableValue) {
+						const selectedValue = this.prevValue.slice(this.selection.s, this.selection.e)
+						const isSpace = Array.isArray(selectedValue.match(/ /g))
 
+						if (prevLengthSpace > currLengthSpace) {
+							this.step -= 1
+						} else if (prevLengthSpace < currLengthSpace) {
+							if (/^\d{1} /.test(target.value) || /^\d{2} /.test(target.value)) {
+								this.step += 1
+							}
+						} else {
+							if (!isSpace) {
+								this.step -= offsetLengthSpace
+							}
+						}
+					} else {
+						this.step = !this.isInteger && leftSideIndex === 1 && this.step <= 2
+							? 1
+							: this.step + offsetLengthSpace
+					}
+				} else {
+					if (this.isSelectableValue) {
+						if (!this.isDelimiter) {
+							target.setSelectionRange(this.selection.s, this.selection.e)
+							return
+						} else {
+							this.step = leftSideIndex + 1
+						}
+					} else {
+						if (this.isDelimiter) {
+							this.step = leftSideIndex + 1
+						} else {
+							this.step -= 1
+						}
+					}
+				}
+
+			}
+			
 			target.setSelectionRange(this.step, this.step)
 		},
 		keyAction(e) {
@@ -286,12 +266,17 @@ export default {
 			this.prevValue = target.value
 			this.selection.s = target.selectionStart
 			this.selection.e = target.selectionEnd
-			this.isGroupSelected = this.selection.s !== this.selection.e,
+			this.isSelectableValue = this.selection.s !== this.selection.e,
 			this.isDelimiter = ['Comma', 'Period'].includes(e.code)
 			this.isDelete = e.code === 'Delete'
 			this.isBackspace = e.code === 'Backspace'
 			this.isDeletes = this.isDelete || this.isBackspace
 			this.isNumeric = [0,1,2,3,4,5,6,7,8,9].map(curr => `Digit${curr}`).includes(e.code)
+			this.isPressedMinus = e.code === 'Minus'
+
+			if (this.isPressedMinus) {
+				this.isToggleMinus = !this.isToggleMinus
+			}
 		},
 	},
 	watch: {
