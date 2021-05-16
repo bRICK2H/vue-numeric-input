@@ -24,7 +24,7 @@ export default {
 		iValue: 0,
 		prevValue: 0,
 		iDecimal: 0,
-		prevOffset: null,
+		prevOffset: 0,
 		selection: { s: 0, e: 0 },
 		isSelectableValue: false,
 		isInteger: false,
@@ -171,50 +171,33 @@ export default {
 
 			// const for selectable value (del/del+add)
 			const restValueAfterDel = this.prevValue.split('')
-			console.log({restValueAfterDel}, this.selection.s, this.selection.e)
-			restValueAfterDel.splice(this.selection.s, this.selection.e - 1)
-			const prevLengthSpace = restValueAfterDel.join('').match(/ /g)
-				? restValueAfterDel.join('').match(/ /g).length : 0
+			restValueAfterDel.splice(this.selection.s, this.selection.e)
+			const prevLengthSpace = restValueAfterDel.join('').match(/ /g) ? restValueAfterDel.join('').match(/ /g).length : 0
 			const currLengthSpace = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
 
 
 			if (this.isDeletes) {
 				if (this.isSelectableValue) {
-					const res = prevLengthSpace - currLengthSpace
-					if (!this.step) this.step = res
-					console.log(this.step)
-					this.step -= prevLengthSpace > currLengthSpace || prevLengthSpace === currLengthSpace? res : 0
-					console.log(prevLengthSpace, currLengthSpace)
-
-
-					if (prevLengthSpace > currLengthSpace || prevLengthSpace === currLengthSpace) {
-						this.step -= res
-					} else {
-						this.step += 1
-					}
-					
-					
-					
-					// if (prevLengthSpace > currLengthSpace) {
-					// 	this.step -= 1
-					// } else if (prevLengthSpace === currLengthSpace) {
-					// 	const selectedValue = this.prevValue.slice(this.selection.s, this.selection.e)
-					// 	const isSpace = Array.isArray(selectedValue.match(/ /g))
-					// 	if (!isSpace) {
-					// 		this.step -= offsetLengthSpace
-					// 	}
+					if (!this.step) this.step = 1
+					if (prevLengthSpace > currLengthSpace) {
+						this.step -= 1
+					} else if (prevLengthSpace === currLengthSpace) {
+						const selectedValue = this.prevValue.slice(this.selection.s, this.selection.e)
+						const isSpace = Array.isArray(selectedValue.match(/ /g))
+						if (!isSpace) {
+							this.step -= offsetLengthSpace
+						}
 						
-					// 	if (this.selection.s === 0 && formatLeftSide !== 0) {
-					// 		this.step = 0
-					// 	}
-					// } else {
-					// 	if (/^\d{1} /.test(target.value) || /^\d{2} /.test(target.value)) {
-					// 		this.step += 1
-					// 	}
-					// }
+						if (this.selection.s === 0 && formatLeftSide !== 0) {
+							this.step = 0
+						}
+					} else {
+						if (/^\d{1} /.test(target.value) || /^\d{2} /.test(target.value)) {
+							this.step += 1
+						}
+					}
 				}
 				if (this.isBackspace) {
-					console.log({offsetLengthSpace}, this.prevOffset, currOffset)
 					if (!this.isSelectableValue) {
 						this.step = (this.step - offsetLengthSpace) === 0 || (this.step - offsetLengthSpace) === -1
 							? this.step === 0 && formatLeftSide === 0 ? 1 : 0
@@ -302,21 +285,18 @@ export default {
 			deep: true,
 			immediate: true,
 			handler(props) {
+				console.log('watch')
 				const { decimal, value } = props,
 						iDecimal = +decimal,
 						iValue = this.initialValue(value, iDecimal),
 						valueToNumber = Number(iValue.replace(/,/, '.'))
 
 				this.iValue = this.separatorValue(iValue)
-				console.log('watch iVAlue: ', iValue, this.iValue)
 				this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
 				this.iDecimal = iDecimal
 			}
 		}
 	},
-	created() {
-		this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
-	}
 }
 </script>
 
