@@ -17,7 +17,7 @@ export default {
 		decimal: {
 			type: [String, Number],
 			default: 0
-		}
+		},
 	},
 	data: () => ({
 		step: 0,
@@ -35,6 +35,9 @@ export default {
 		isDeletes: false,
 		isDelete: false,
 		isBackspace: false,
+		min: -Math.pow(10, 10),
+		max: Math.pow(10, 10),
+		isLimit: false,
 	}),
 	methods: {
 		input(e) {
@@ -47,20 +50,20 @@ export default {
 						? convertedValue
 						: Number(convertedValue.replace(/,/, '.')),
 					isNegativeValue = /-/.test(convertedValue),
-					isMaxPositive = !isNegativeValue && numericValue > Math.pow(10, 10),
-					isMaxNegative = isNegativeValue && numericValue < -Math.pow(10, 10)
+					isMaxPositive = !isNegativeValue && numericValue > this.max,
+					isMaxNegative = isNegativeValue && numericValue < this.min
 
-			if (isMaxPositive || isMaxNegative) {
+			// В самом конце, когда все сделаю, по параметру isLimit подсвечивать input красным
+			this.isLimit = isMaxPositive || isMaxNegative
+
+			if (!this.isLimit) {
+				target.value = this.separatorValue(convertedValue)
+				this.$emit('input', numericValue)
+				this.setCursorPosition(target)
+			} else {
 				target.value = this.prevValue
 				target.setSelectionRange(this.step - 1, this.step - 1)
-				return
 			}
-
-			console.log('value before: ', `'${this.separatorValue(convertedValue)}'`)
-			target.value = this.separatorValue(convertedValue)
-			this.$emit('input', numericValue)
-
-			this.setCursorPosition(target)
 		},
 		initialValue(value, iDecimal) {
 			const toNumber = typeof value === 'string'
@@ -153,12 +156,18 @@ export default {
 						: arrValue.splice(0)
 
 			for (let i = wholePart.length; i > 0; i -= 3) {
-				i - 3 >= 0
-					? newArrValue.unshift(' ', ...wholePart.splice([i] - 3, 3))
+				const isSeparator = wholePart.length === 3 || wholePart.length === 4 && wholePart[0] === '-'
+
+				i - 3 >= 0 && wholePart.length !== 3
+					?  isSeparator
+						? false
+						: newArrValue.unshift(' ', ...wholePart.splice([i] - 3, 3))
 					: newArrValue.unshift(...wholePart)
 			}
+
+			console.log(newArrValue)
 			newArrValue.push(...arrValue)
-			return newArrValue.join('').trim()
+			return newArrValue.join('')
 		},
 		setCursorPosition(target) {
 			const currOffset = target.value.length - target.value.replace(/ /g, '').length,
@@ -171,47 +180,26 @@ export default {
 
 			// const for selectable value (del/del+add)
 			const restValueAfterDel = this.prevValue.split('')
-			console.log({restValueAfterDel}, this.selection.s, this.selection.e)
-			restValueAfterDel.splice(this.selection.s, this.selection.e - 1)
+			restValueAfterDel.splice(this.selection.s, this.selection.e - this.selection.s)
 			const prevLengthSpace = restValueAfterDel.join('').match(/ /g)
 				? restValueAfterDel.join('').match(/ /g).length : 0
 			const currLengthSpace = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
+			const setDedicatedStep = () => {
+				if (!this.step) {
+					this.step = !formatLeftSide ? 1 : prevLengthSpace - currLengthSpace
+				}
+
+				if (prevLengthSpace > currLengthSpace) {
+					this.step -= 1
+				} else if (prevLengthSpace < currLengthSpace) {
+					this.step += 1
+				}
+			}
 
 
 			if (this.isDeletes) {
 				if (this.isSelectableValue) {
-					const res = prevLengthSpace - currLengthSpace
-					if (!this.step) this.step = res
-					console.log(this.step)
-					this.step -= prevLengthSpace > currLengthSpace || prevLengthSpace === currLengthSpace? res : 0
-					console.log(prevLengthSpace, currLengthSpace)
-
-
-					if (prevLengthSpace > currLengthSpace || prevLengthSpace === currLengthSpace) {
-						this.step -= res
-					} else {
-						this.step += 1
-					}
-					
-					
-					
-					// if (prevLengthSpace > currLengthSpace) {
-					// 	this.step -= 1
-					// } else if (prevLengthSpace === currLengthSpace) {
-					// 	const selectedValue = this.prevValue.slice(this.selection.s, this.selection.e)
-					// 	const isSpace = Array.isArray(selectedValue.match(/ /g))
-					// 	if (!isSpace) {
-					// 		this.step -= offsetLengthSpace
-					// 	}
-						
-					// 	if (this.selection.s === 0 && formatLeftSide !== 0) {
-					// 		this.step = 0
-					// 	}
-					// } else {
-					// 	if (/^\d{1} /.test(target.value) || /^\d{2} /.test(target.value)) {
-					// 		this.step += 1
-					// 	}
-					// }
+					setDedicatedStep()
 				}
 				if (this.isBackspace) {
 					console.log({offsetLengthSpace}, this.prevOffset, currOffset)
@@ -238,20 +226,7 @@ export default {
 			} else {
 				if (this.isNumeric) {
 					if (this.isSelectableValue) {
-						const selectedValue = this.prevValue.slice(this.selection.s, this.selection.e)
-						const isSpace = Array.isArray(selectedValue.match(/ /g))
-
-						if (prevLengthSpace > currLengthSpace) {
-							this.step -= 1
-						} else if (prevLengthSpace < currLengthSpace) {
-							if (/^\d{1} /.test(target.value) || /^\d{2} /.test(target.value)) {
-								this.step += 1
-							}
-						} else {
-							if (!isSpace) {
-								this.step -= offsetLengthSpace
-							}
-						}
+						setDedicatedStep()
 					} else {
 						this.step = !this.isInteger && leftSideIndex === 1 && this.step <= 2
 							? 1
@@ -307,10 +282,9 @@ export default {
 						iValue = this.initialValue(value, iDecimal),
 						valueToNumber = Number(iValue.replace(/,/, '.'))
 
-				this.iValue = this.separatorValue(iValue)
-				console.log('watch iVAlue: ', iValue, this.iValue)
-				this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
 				this.iDecimal = iDecimal
+				this.iValue = this.separatorValue(iValue)
+				this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
 			}
 		}
 	},
