@@ -35,6 +35,7 @@ export default {
 		isDeletes: false,
 		isDelete: false,
 		isBackspace: false,
+		isEvent: false,
 		min: -Math.pow(10, 10),
 		max: Math.pow(10, 10),
 		isLimit: false,
@@ -42,7 +43,9 @@ export default {
 	methods: {
 		input(e) {
 			const { target } = e
-
+			
+			this.isEvent = true
+			setTimeout(() => this.isEvent = false)
 			this.step = target.selectionStart
 
 			const convertedValue = this.convertValue(target.value),
@@ -52,13 +55,16 @@ export default {
 					isNegativeValue = /-/.test(convertedValue),
 					isMaxPositive = !isNegativeValue && numericValue > this.max,
 					isMaxNegative = isNegativeValue && numericValue < this.min
+			console.log({numericValue})
 
 			// В самом конце, когда все сделаю, по параметру isLimit подсвечивать input красным
 			this.isLimit = isMaxPositive || isMaxNegative
+			console.log('conver', this.separatorValue(convertedValue), convertedValue)
 
 			if (!this.isLimit) {
-				target.value = this.separatorValue(convertedValue)
-				this.$emit('input', numericValue)
+				// console.log('tv', this.definedNegativeOrPositiveValue(this.separatorValue(convertedValue)))
+				target.value = this.definedNegativeOrPositiveValue(this.separatorValue(convertedValue))
+				this.$emit('input', this.definedNegativeOrPositiveValue(numericValue))
 				this.setCursorPosition(target)
 			} else {
 				target.value = this.prevValue
@@ -72,57 +78,89 @@ export default {
 
 			return toNumber.toFixed(iDecimal).replace(/\./, ',')
 		},
-		convertValue(value) {
-			const definedNegativeOrPositiveValue = value => {
-				let val = String(value).replace(/ /g, '').replace(/,/, '.').replace(/[^\d\.]/, '')
-				val = this.isToggleMinus ? val * -1 : val * 1
+		definedNegativeOrPositiveValue(value) {
+			console.log({value}, this.isToggleMinus, 'П')
 
-				console.log({val})
-				/**
-				 * По минусу
-				 * 1. Сепаратор работает в некоторых моментах не правильно, создает лишний пробел
-				 * 2. Так же при добовлении минуса съезжает курсор
-				 * 3. При выделении значений числа, не должно ничего удаляться, должно сниматься выделение и тоглиться отр и полож знач.
-				 * 4. Не удаляется минут через backspase
-				 */
-				
-				return Number(val).toFixed(this.iDecimal).replace(/\./, ',')
+			if (typeof value === 'number') {
+				// val = String(value).replace(/ /g, '').replace(/,/, '.').replace(/[^\d\.]/, '')
+				console.log('number: ', this.isToggleMinus ? value * -1 : value * 1)
+				return this.isToggleMinus ? value * -1 : value * 1
+			} else {
+				console.log('string', this.isToggleMinus ? `-${value}` : value)
+				return this.isToggleMinus ? `-${value}` : value
 			}
 			
-			const unSeparateValue = value.replace(/ /g, '')
+			/**
+			 * По минусу
+			 * 1. Сепаратор работает в некоторых моментах не правильно, создает лишний пробел
+			 * 2. Так же при добовлении минуса съезжает курсор
+			 * 3. При выделении значений числа, не должно ничего удаляться, должно сниматься выделение и тоглиться отр и полож знач.
+			 * 4. Не удаляется минут через backspase
+			 */
+		},
+		convertValue(value) {
+			console.log(this.step, this.selection.s, value)
+			
+			const unSeparateValue = value.replace(/ /g, ''),
+					currNumeric = Number(unSeparateValue.replace(/,/, '.')),
+					isCurrNumeric = !isNaN(currNumeric)
 
 			if (this.isInteger) {
-				const clearValue = unSeparateValue.replace(/[^\d]/g, '')
-				return definedNegativeOrPositiveValue(Number(clearValue))
-			} else {
-				const isExistComma = /,/.test(value),
-						currNumeric = Number(unSeparateValue.replace(/,/, '.')),
-						isCurrNumeric = !isNaN(currNumeric)
-
-				const	convertSelectableValue = value => {
-					const spaceCount = value.match(/ /g) ? value.match(/ /g).length : 0,
-							clearValue = String(Number(value.replace(/[^\d]/g, ''))),
-							arrValue = clearValue.split('')
-
-					arrValue.splice(this.isDelimiter ? this.step - 1 : this.step - spaceCount, 0, '.')
-					const fixedValue = Number(arrValue.join('').replace(/ /g, '')).toFixed(this.iDecimal)
-
-					return fixedValue.replace(/\./, ',')
+				console.log('f:', unSeparateValue)
+				const isOnlyMinus = unSeparateValue === '-',
+						isDelMinus = !this.step && !(/-/.test(unSeparateValue)) && /-/.test(this.prevValue)
+			
+				if (isDelMinus) {
+					this.isToggleMinus = false
 				}
 
+				if (this.isPressedMinus || !isCurrNumeric) {
+					console.log(isOnlyMinus ? -0 : this.prevValue.replace(/[^\d]/g, ''))
+					return isOnlyMinus ? 0 : this.prevValue.replace(/[^\d]/g, '')
+				}
+
+				if (isCurrNumeric) {
+					console.log('1')
+					const clearValue = unSeparateValue.replace(/[^\d]/g, '')
+					return Number(clearValue)
+				}
+			} else {
+				const isExistComma = /,/.test(value)
 
 				if (!isExistComma) {
 					if (!this.isSelectableValue) {
-						return this.prevValue.replace(/ /g, '')
+						return this.prevValue.replace(/ /g, '').replace(/-/, '')
 					} else {
+						console.log('foo')
 						if (!isCurrNumeric) {
-							return this.prevValue.replace(/ /g, '')
+							return this.prevValue.replace(/ /g, '').replace(/-/, '')
 						} 	else {
-							return convertSelectableValue(value)
+							const restValue = value.split('')
+							const prevRestValue = this.prevValue.split('')
+							let resultValue
+
+							if(this.isDelimiter) {
+								prevRestValue.splice(this.selection.s, this.selection.e - this.selection.s , '.')
+								resultValue = prevRestValue
+							} else {
+								restValue.splice(this.step, 0 , '.')
+								resultValue = restValue
+							}
+
+							const formatValue = resultValue.join('').replace(/ /g, '').split('.')
+							const [ , right ] = formatValue
+
+							if (!right) {
+								formatValue[1] = '0'
+							}
+
+							console.log('to: ', Number(formatValue.join('.')).toFixed(this.iDecimal).replace(/\./, ',').replace(/-/, ''))
+							
+							return Number(formatValue.join('.')).toFixed(this.iDecimal).replace(/\./, ',').replace(/-/, '')
 						}
 					}
 				} else {
-					if (!this.isDelimiter) {
+					if (!this.isDelimiter && !this.isSelectableValue) {
 						const clearValue = unSeparateValue.replace(/[^\d,]/g, '')
 						const fixedValue = Number(clearValue.replace(/,/, '.')).toFixed(this.iDecimal)
 	
@@ -134,21 +172,61 @@ export default {
 							const arrValue = value.split('')
 							arrValue.splice(this.step - 1, 1)
 
-							return arrValue.join('').replace(/ /g, '')
+							return arrValue.join('').replace(/ /g, '').replace(/-/, '')
 						}
 					} else {
-						if (!isCurrNumeric && !this.isDelimiter) {
-							return this.prevValue.replace(/ /g, '')
+						if (!this.isDelimiter && !this.isPressedMinus && isCurrNumeric) {
+							const clearValue = unSeparateValue.replace(/[^\d,]/g, '')
+							const fixedValue = Number(clearValue.replace(/,/, '.')).toFixed(this.iDecimal)
+			
+							return fixedValue.replace(/\./, ',').replace(/-/, '')
 						}
 
-						if (this.isDelimiter) {
-							return convertSelectableValue(value)
+						if (!this.isSelectableValue) {
+							if (this.isDelimiter) {
+								const arrValue = value.split('')
+								arrValue.splice(this.step - 1, 1)
+
+								return arrValue.join('').replace(/ /g, '')
+							}
+						} else {
+							if (!isCurrNumeric && !this.isDelimiter) {
+								return this.prevValue.replace(/ /g, '').replace(/-/, '')
+							}
+
+							if (this.isDelimiter) {
+								const restValue = this.prevValue.split('')
+								let formatValue = ''
+								
+								if (!isExistComma) {
+									restValue.splice(this.selection.s, this.selection.e - this.selection.s , '.')
+									formatValue = restValue.join('').replace(/ /g, '').split('.')
+								} else {
+									restValue.splice(this.selection.s, this.selection.e - this.selection.s)
+									formatValue = restValue.join('').replace(/ /g, '').replace(/,/, '.').split('.')
+								}
+
+								const [ , right ] = formatValue
+	
+								if (!right) {
+									formatValue[1] = '0'
+								}
+									
+								return Number(formatValue.join('.')).toFixed(this.iDecimal).replace(/\./, ',').replace(/-/, '')
+							}
+
+							if (this.isPressedMinus) {
+								return this.isToggleMinus
+									? this.prevValue.replace(/ /g, '')
+									: this.prevValue.replace(/ /g, '').replace(/-/, '')
+							}
 						}
 					}
 				}
 			}
 		},
 		separatorValue(value) {
+			console.log({value}, 'В')
 			const newArrValue = [],
 					arrValue = String(value).split(''),
 					wholePart = arrValue.indexOf(',') !== -1
@@ -179,12 +257,15 @@ export default {
 			this.prevOffset = currOffset
 
 			// const for selectable value (del/del+add)
-			const restValueAfterDel = this.prevValue.split('')
-			restValueAfterDel.splice(this.selection.s, this.selection.e - this.selection.s)
-			const prevLengthSpace = restValueAfterDel.join('').match(/ /g)
-				? restValueAfterDel.join('').match(/ /g).length : 0
-			const currLengthSpace = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
-			const setDedicatedStep = () => {
+	
+			const setSelectableStep = () => {
+				console.log('war')
+				const restValueAfterDel = this.prevValue.split('')
+				restValueAfterDel.splice(this.selection.s, this.selection.e - this.selection.s)
+				const prevLengthSpace = restValueAfterDel.join('').match(/ /g)
+					? restValueAfterDel.join('').match(/ /g).length : 0
+				const currLengthSpace = target.value.match(/ /g) ? target.value.match(/ /g).length : 0
+
 				if (!this.step) {
 					this.step = !formatLeftSide ? 1 : prevLengthSpace - currLengthSpace
 				}
@@ -199,10 +280,9 @@ export default {
 
 			if (this.isDeletes) {
 				if (this.isSelectableValue) {
-					setDedicatedStep()
+					setSelectableStep()
 				}
 				if (this.isBackspace) {
-					console.log({offsetLengthSpace}, this.prevOffset, currOffset)
 					if (!this.isSelectableValue) {
 						this.step = (this.step - offsetLengthSpace) === 0 || (this.step - offsetLengthSpace) === -1
 							? this.step === 0 && formatLeftSide === 0 ? 1 : 0
@@ -226,7 +306,7 @@ export default {
 			} else {
 				if (this.isNumeric) {
 					if (this.isSelectableValue) {
-						setDedicatedStep()
+						setSelectableStep()
 					} else {
 						this.step = !this.isInteger && leftSideIndex === 1 && this.step <= 2
 							? 1
@@ -234,17 +314,27 @@ export default {
 					}
 				} else {
 					if (this.isSelectableValue) {
-						if (!this.isDelimiter) {
+						if (!this.isDelimiter && !this.isPressedMinus) {
 							target.setSelectionRange(this.selection.s, this.selection.e)
 							return
 						} else {
-							this.step = leftSideIndex + 1
+							console.log('here?')
+							this.step = this.isPressedMinus
+								? this.isToggleMinus ? 1 : 0
+								: leftSideIndex + 1
 						}
 					} else {
 						if (this.isDelimiter) {
 							this.step = leftSideIndex + 1
 						} else {
 							this.step -= 1
+						}
+						if (this.isPressedMinus) {
+							console.log('??')
+							this.isToggleMinus
+								? target.setSelectionRange(this.step + 1, this.step + 1)
+								: target.setSelectionRange(this.step - 1, this.step - 1)
+							return
 						}
 					}
 				}
@@ -277,19 +367,27 @@ export default {
 			deep: true,
 			immediate: true,
 			handler(props) {
-				const { decimal, value } = props,
-						iDecimal = +decimal,
-						iValue = this.initialValue(value, iDecimal),
-						valueToNumber = Number(iValue.replace(/,/, '.'))
 
-				this.iDecimal = iDecimal
-				this.iValue = this.separatorValue(iValue)
-				this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
+				
+				if (!this.isEvent) {
+					console.log('this.isEvent', this.isEvent)
+					const { decimal, value } = props,
+							iDecimal = +decimal,
+							iValue = this.initialValue(value, iDecimal),
+							valueToNumber = Number(iValue.replace(/,/, '.'))
+	
+					this.iValue = this.separatorValue(iValue)
+					this.iDecimal = iDecimal
+					this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
+				}
+				
 			}
 		}
 	},
 	created() {
+		// this.iValue = this.definedNegativeOrPositiveValue(this.separatorValue(this.iValue))
 		this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
+		this.isToggleMinus = /-/.test(this.iValue)
 	}
 }
 </script>

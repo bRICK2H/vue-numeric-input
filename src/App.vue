@@ -56,8 +56,8 @@ export default {
 	},
 	data: () => ({
 		data: { value: 2.420 },
-		cValue: -123456789.26,
-		decimal: 3,
+		cValue: -123456789.23,
+		decimal: 0,
 		mValue: 154655.12,
 		kValue: 154655.315,
 		nValue: 1.44,
