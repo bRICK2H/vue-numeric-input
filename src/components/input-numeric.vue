@@ -35,7 +35,8 @@ export default {
 		isDeletes: false,
 		isDelete: false,
 		isBackspace: false,
-		isEvent: false,
+		isWatcher: true,
+		isLoad: false,
 		min: -Math.pow(10, 10),
 		max: Math.pow(10, 10),
 		isLimit: false,
@@ -44,9 +45,9 @@ export default {
 		input(e) {
 			const { target } = e
 			
-			this.isEvent = true
-			setTimeout(() => this.isEvent = false)
 			this.step = target.selectionStart
+			this.isWatcher = false
+			setTimeout(() => this.isWatcher = true)
 
 			const convertedValue = this.convertValue(target.value),
 					numericValue = this.isInteger
@@ -55,58 +56,57 @@ export default {
 					isNegativeValue = /-/.test(convertedValue),
 					isMaxPositive = !isNegativeValue && numericValue > this.max,
 					isMaxNegative = isNegativeValue && numericValue < this.min
-			console.log({numericValue})
 
 			// В самом конце, когда все сделаю, по параметру isLimit подсвечивать input красным
 			this.isLimit = isMaxPositive || isMaxNegative
-			console.log('conver', this.separatorValue(convertedValue), convertedValue)
 
 			if (!this.isLimit) {
-				// console.log('tv', this.definedNegativeOrPositiveValue(this.separatorValue(convertedValue)))
-				target.value = this.definedNegativeOrPositiveValue(this.separatorValue(convertedValue))
-				this.$emit('input', this.definedNegativeOrPositiveValue(numericValue))
+				target.value = this.definedNegativeOrPositiveValue(this.separatorValue(convertedValue), 'string')
+				this.$emit('input', this.definedNegativeOrPositiveValue(numericValue, 'number'))
 				this.setCursorPosition(target)
 			} else {
 				target.value = this.prevValue
 				target.setSelectionRange(this.step - 1, this.step - 1)
 			}
 		},
-		initialValue(value, iDecimal) {
-			const toNumber = typeof value === 'string'
-				? Number(value.replace(/,/, '.'))
-				: value
+		parseValue(props) {
+			const { decimal, value } = props,
+					iDecimal = +decimal,
+					iValue = (() => {
+						const toNumber = typeof value === 'string'
+							? Number(value.replace(/,/, '.'))
+							: value
 
-			return toNumber.toFixed(iDecimal).replace(/\./, ',')
+						return toNumber.toFixed(iDecimal).replace(/\./, ',')
+					})(),
+					valueToNumber = Number(iValue.replace(/,/, '.'))
+
+			this.iValue = this.separatorValue(iValue)
+			this.iDecimal = +decimal
+			this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
+
+			this.$emit('input', valueToNumber)
 		},
-		definedNegativeOrPositiveValue(value) {
-			console.log({value}, this.isToggleMinus, 'П')
-
-			if (typeof value === 'number') {
-				// val = String(value).replace(/ /g, '').replace(/,/, '.').replace(/[^\d\.]/, '')
-				console.log('number: ', this.isToggleMinus ? value * -1 : value * 1)
+		definedNegativeOrPositiveValue(value, toType) {
+			
+			if (toType === 'number') {
 				return this.isToggleMinus ? value * -1 : value * 1
 			} else {
-				console.log('string', this.isToggleMinus ? `-${value}` : value)
 				return this.isToggleMinus ? `-${value}` : value
 			}
 			
 			/**
 			 * По минусу
-			 * 1. Сепаратор работает в некоторых моментах не правильно, создает лишний пробел
-			 * 2. Так же при добовлении минуса съезжает курсор
-			 * 3. При выделении значений числа, не должно ничего удаляться, должно сниматься выделение и тоглиться отр и полож знач.
+			 * 0. при -0 оставлять курсор перед 0
 			 * 4. Не удаляется минут через backspase
 			 */
 		},
 		convertValue(value) {
-			console.log(this.step, this.selection.s, value)
-			
 			const unSeparateValue = value.replace(/ /g, ''),
 					currNumeric = Number(unSeparateValue.replace(/,/, '.')),
 					isCurrNumeric = !isNaN(currNumeric)
 
 			if (this.isInteger) {
-				console.log('f:', unSeparateValue)
 				const isOnlyMinus = unSeparateValue === '-',
 						isDelMinus = !this.step && !(/-/.test(unSeparateValue)) && /-/.test(this.prevValue)
 			
@@ -115,12 +115,10 @@ export default {
 				}
 
 				if (this.isPressedMinus || !isCurrNumeric) {
-					console.log(isOnlyMinus ? -0 : this.prevValue.replace(/[^\d]/g, ''))
 					return isOnlyMinus ? 0 : this.prevValue.replace(/[^\d]/g, '')
 				}
 
 				if (isCurrNumeric) {
-					console.log('1')
 					const clearValue = unSeparateValue.replace(/[^\d]/g, '')
 					return Number(clearValue)
 				}
@@ -131,7 +129,6 @@ export default {
 					if (!this.isSelectableValue) {
 						return this.prevValue.replace(/ /g, '').replace(/-/, '')
 					} else {
-						console.log('foo')
 						if (!isCurrNumeric) {
 							return this.prevValue.replace(/ /g, '').replace(/-/, '')
 						} 	else {
@@ -154,8 +151,6 @@ export default {
 								formatValue[1] = '0'
 							}
 
-							console.log('to: ', Number(formatValue.join('.')).toFixed(this.iDecimal).replace(/\./, ',').replace(/-/, ''))
-							
 							return Number(formatValue.join('.')).toFixed(this.iDecimal).replace(/\./, ',').replace(/-/, '')
 						}
 					}
@@ -226,7 +221,6 @@ export default {
 			}
 		},
 		separatorValue(value) {
-			console.log({value}, 'В')
 			const newArrValue = [],
 					arrValue = String(value).split(''),
 					wholePart = arrValue.indexOf(',') !== -1
@@ -243,7 +237,6 @@ export default {
 					: newArrValue.unshift(...wholePart)
 			}
 
-			console.log(newArrValue)
 			newArrValue.push(...arrValue)
 			return newArrValue.join('')
 		},
@@ -259,7 +252,6 @@ export default {
 			// const for selectable value (del/del+add)
 	
 			const setSelectableStep = () => {
-				console.log('war')
 				const restValueAfterDel = this.prevValue.split('')
 				restValueAfterDel.splice(this.selection.s, this.selection.e - this.selection.s)
 				const prevLengthSpace = restValueAfterDel.join('').match(/ /g)
@@ -365,27 +357,21 @@ export default {
 	watch: {
 		$props: {
 			deep: true,
-			immediate: true,
 			handler(props) {
-
-				
-				if (!this.isEvent) {
-					console.log('this.isEvent', this.isEvent)
-					const { decimal, value } = props,
-							iDecimal = +decimal,
-							iValue = this.initialValue(value, iDecimal),
-							valueToNumber = Number(iValue.replace(/,/, '.'))
-	
-					this.iValue = this.separatorValue(iValue)
-					this.iDecimal = iDecimal
-					this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
+				if (this.isWatcher && this.isLoad) {
+					this.parseValue(props)
 				}
 				
 			}
 		}
 	},
 	created() {
-		// this.iValue = this.definedNegativeOrPositiveValue(this.separatorValue(this.iValue))
+		this.parseValue(this.$props)
+
+		setTimeout(() => {
+			this.isLoad = true
+		})
+		
 		this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
 		this.isToggleMinus = /-/.test(this.iValue)
 	}
