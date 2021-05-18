@@ -1,6 +1,7 @@
 <template>
 	<div class="container">
 		<input-numeric
+			:separator="true"
 			:decimal="decimal"
 			v-model="cValue"
 		/>
@@ -56,9 +57,9 @@ export default {
 	},
 	data: () => ({
 		data: { value: 2.420 },
-		cValue: 123456789.23,
+		cValue: -123456789.23,
 		decimal: 2,
-		mValue: 154655.12,
+		mValue: 154655,
 		kValue: 154655.315,
 		nValue: 1.44,
 	}),
