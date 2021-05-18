@@ -35,6 +35,8 @@ export default {
 		selection: { s: 0, e: 0 },
 		isSelectableValue: false,
 		isInteger: false,
+		isPressedPoint: false,
+		isPressedComma: false,
 		isDelimiter: false,
 		isPressedMinus: false,
 		isToggleMinus: false,
@@ -118,7 +120,8 @@ export default {
 			const defineZero = 0,
 					unSeparateValue = value.replace(/ /g, ''),
 					currNumeric = Number(unSeparateValue.replace(/,/, '.')),
-					isCurrNumeric = !isNaN(currNumeric)
+					isCurrNumeric = !isNaN(currNumeric),
+					isNegativeSelectionValue = this.selection.s === 0 && this.selection.e === this.prevValue.length
 					// isRemoveMinus = (!this.selection.s || !this.step)
 
 			// if (isRemoveMinus) this.isToggleMinus = false
@@ -146,32 +149,41 @@ export default {
 						return this.prevValue.replace(/ /g, '').replace(/-/, '')
 					} else {
 						if (!isCurrNumeric) {
-							if (!this.isDelimiter && !this.isPressedMinus) {
-								// this.isToggleMinus = /-/.test(this.prevValue)
-								return this.prevValue.replace(/ /g, '').replace(/-/, '')
-							}
+							if (this.isPressedPoint || this.isDeletes) {
+								console.log('isPressedPoint')
+								if (isNegativeSelectionValue) this.isToggleMinus = false
 
-							if (/^-?\.?$/.test(value) && !this.isPressedMinus) {
-								console.log('-')
 								return defineZero.toFixed(this.iDecimal).replace(/\./, ',')
 							}
 
-							if (this.isPressedMinus) {
-								console.log('1', this.isToggleMinus)
-								// this.isToggleMinus = !(/-/.test(this.prevValue))
-								return this.prevValue.replace(/ /g, '').replace(/-/, '')
-								// if (/-/.test(this.prevValue)) {
-								// 	return this.prevValue.replace(/ /g, '').replace(/-/, '')
-								// } else {
-								// 	return this.prevValue.replace(/ /g, '')
-								// }
-							}
+							// if (!this.isDelimiter && !this.isPressedMinus) {
+							// 	// this.isToggleMinus = /-/.test(this.prevValue)
+							// 	return this.prevValue.replace(/ /g, '').replace(/-/, '')
+							// }
+
+							// if (/^-?\.?$/.test(value) && !this.isPressedMinus) {
+							// 	console.log('-')
+							// 	return defineZero.toFixed(this.iDecimal).replace(/\./, ',')
+							// }
+
+							// if (this.isPressedMinus) {
+							// 	console.log('1', this.isToggleMinus)
+							// 	// this.isToggleMinus = !(/-/.test(this.prevValue))
+							// 	return this.prevValue.replace(/ /g, '').replace(/-/, '')
+							// 	// if (/-/.test(this.prevValue)) {
+							// 	// 	return this.prevValue.replace(/ /g, '').replace(/-/, '')
+							// 	// } else {
+							// 	// 	return this.prevValue.replace(/ /g, '')
+							// 	// }
+							// }
 						} 	else {
+							console.log('here?')
 							const restValue = value.split('')
 							const prevRestValue = this.prevValue.split('')
 							let resultValue
 
 							if(this.isDelimiter) {
+								console.log('isDelimit')
 								prevRestValue.splice(this.selection.s, this.selection.e - this.selection.s , '.')
 								resultValue = prevRestValue
 							} else {
@@ -235,13 +247,19 @@ export default {
 									formatValue = restValue.join('').replace(/ /g, '').split('.')
 								} else {
 									restValue.splice(this.selection.s, this.selection.e - this.selection.s)
+									console.log({restValue},this.prevValue, this.selection.s, this.selection.e, this.selection.e - this.selection.s)
+									if (isNegativeSelectionValue) this.isToggleMinus = false
+
 									formatValue = restValue.join('').replace(/ /g, '').replace(/,/, '.').split('.')
 								}
 
 								const [ left, right ] = formatValue
+								console.log(formatValue, left, right)
 	
 								if (!left) formatValue[0] = '0'
 								if (!right) formatValue[1] = '0'
+
+								console.log({formatValue})
 									
 								return Number(formatValue.join('.')).toFixed(this.iDecimal).replace(/\./, ',').replace(/-/, '')
 							}
@@ -393,6 +411,8 @@ export default {
 			this.selection.e = target.selectionEnd
 			this.isSelectableValue = this.selection.s !== this.selection.e,
 			this.isDelimiter = ['Comma', 'Period'].includes(e.code)
+			this.isPressedPoint = e.code === 'Period'
+			this.isPressedComma = e.code === 'Comma'
 			this.isDelete = e.code === 'Delete'
 			this.isBackspace = e.code === 'Backspace'
 			this.isEscape = e.code === 'Escape'
