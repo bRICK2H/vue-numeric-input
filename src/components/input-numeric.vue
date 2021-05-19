@@ -107,24 +107,20 @@ export default {
 			this.$emit('input', valueToNumber)
 		},
 		definedNegativeOrPositiveValue(value, toType) {
-			
-			if (toType === 'number') {
-				return this.isToggleMinus ? value * -1 : value * 1
-			} else {
-				console.log('in defNP:', this.isToggleMinus ? `-${value}` : value)
-				return this.isToggleMinus ? `-${value}` : value
-			}
-
+			return toType === 'number'
+				? this.isToggleMinus
+					? value * -1 : value * 1
+				: this.isToggleMinus 
+					? `-${value}` : value
 		},
 		convertValue(value) {
 			const defineZero = 0,
 					unSeparateValue = value.replace(/ /g, ''),
 					currNumeric = Number(unSeparateValue.replace(/,/, '.')),
 					isCurrNumeric = !isNaN(currNumeric),
-					isNegativeSelectionValue = this.selection.s === 0 && this.selection.e === this.prevValue.length
-					// isRemoveMinus = (!this.selection.s || !this.step)
+					isNegativeSelectionValue = /-/.test(this.prevValue) && !(/-/.test(value))
 
-			// if (isRemoveMinus) this.isToggleMinus = false
+					if (isNegativeSelectionValue) this.isToggleMinus = false
 
 			if (this.isInteger) {
 				const isOnlyMinus = unSeparateValue === '-'
@@ -150,40 +146,16 @@ export default {
 					} else {
 						if (!isCurrNumeric) {
 							if (this.isPressedPoint || this.isDeletes) {
-								console.log('isPressedPoint')
-								if (isNegativeSelectionValue) this.isToggleMinus = false
-
 								return defineZero.toFixed(this.iDecimal).replace(/\./, ',')
 							}
 
-							// if (!this.isDelimiter && !this.isPressedMinus) {
-							// 	// this.isToggleMinus = /-/.test(this.prevValue)
-							// 	return this.prevValue.replace(/ /g, '').replace(/-/, '')
-							// }
-
-							// if (/^-?\.?$/.test(value) && !this.isPressedMinus) {
-							// 	console.log('-')
-							// 	return defineZero.toFixed(this.iDecimal).replace(/\./, ',')
-							// }
-
-							// if (this.isPressedMinus) {
-							// 	console.log('1', this.isToggleMinus)
-							// 	// this.isToggleMinus = !(/-/.test(this.prevValue))
-							// 	return this.prevValue.replace(/ /g, '').replace(/-/, '')
-							// 	// if (/-/.test(this.prevValue)) {
-							// 	// 	return this.prevValue.replace(/ /g, '').replace(/-/, '')
-							// 	// } else {
-							// 	// 	return this.prevValue.replace(/ /g, '')
-							// 	// }
-							// }
-						} 	else {
-							console.log('here?')
+							return this.prevValue.replace(/ /g, '').replace(/-/, '')
+						} else {
 							const restValue = value.split('')
 							const prevRestValue = this.prevValue.split('')
 							let resultValue
 
 							if(this.isDelimiter) {
-								console.log('isDelimit')
 								prevRestValue.splice(this.selection.s, this.selection.e - this.selection.s , '.')
 								resultValue = prevRestValue
 							} else {
@@ -202,7 +174,6 @@ export default {
 					}
 				} else {
 					if (!this.isDelimiter && !this.isSelectableValue) {
-						console.log('??', this.isToggleMinus)
 						const clearValue = unSeparateValue.replace(/[^\d,]/g, '')
 						const fixedValue = Number(clearValue.replace(/,/, '.')).toFixed(this.iDecimal)
 	
@@ -217,8 +188,6 @@ export default {
 							return arrValue.join('').replace(/ /g, '').replace(/-/, '')
 						}
 					} else {
-						console.log('parent')
-						// разобраться и проверить, при фокусе, удалить через backspace , . -, так же глянуть на не delimiter
 						if (!this.isDelimiter && !this.isPressedMinus && isCurrNumeric) {
 							const clearValue = unSeparateValue.replace(/[^\d,]/g, '')
 							const fixedValue = Number(clearValue.replace(/,/, '.')).toFixed(this.iDecimal)
@@ -234,41 +203,24 @@ export default {
 								return arrValue.join('').replace(/ /g, '')
 							}
 						} else {
-							if (!isCurrNumeric && !this.isDelimiter) {
-								return this.prevValue.replace(/ /g, '').replace(/-/, '')
-							}
-
 							if (this.isDelimiter) {
 								const restValue = this.prevValue.split('')
-								let formatValue = ''
-								
-								if (!isExistComma) {
-									restValue.splice(this.selection.s, this.selection.e - this.selection.s , '.')
-									formatValue = restValue.join('').replace(/ /g, '').split('.')
-								} else {
-									restValue.splice(this.selection.s, this.selection.e - this.selection.s)
-									console.log({restValue},this.prevValue, this.selection.s, this.selection.e, this.selection.e - this.selection.s)
-									if (isNegativeSelectionValue) this.isToggleMinus = false
+								const res = restValue.splice(this.selection.s, this.selection.e - this.selection.s)
 
-									formatValue = restValue.join('').replace(/ /g, '').replace(/,/, '.').split('.')
+								if (res.includes(',')) {
+									restValue.splice(this.selection.s, 0, '.')
 								}
 
+								const formatValue = restValue.join('').replace(/ /g, '').replace(/,/, '.').split('.')
 								const [ left, right ] = formatValue
-								console.log(formatValue, left, right)
-	
+
 								if (!left) formatValue[0] = '0'
 								if (!right) formatValue[1] = '0'
-
-								console.log({formatValue})
-									
+								
 								return Number(formatValue.join('.')).toFixed(this.iDecimal).replace(/\./, ',').replace(/-/, '')
+							} else {
+								return this.prevValue.replace(/ /g, '').replace(/-/, '')
 							}
-
-							// if (this.isPressedMinus) {
-							// 	return this.isToggleMinus
-							// 		? this.prevValue.replace(/ /g, '')
-							// 		: this.prevValue.replace(/ /g, '').replace(/-/, '')
-							// }
 						}
 					}
 				}
@@ -349,8 +301,12 @@ export default {
 						const empty = ' '
 						const prevLeftSide = this.prevValue.length - this.iDecimal - 1
 
-						if (this.step && prevLeftSide > this.step) {
-							this.step = this.prevValue[this.step] === empty ? this.step + 1 : this.step - offsetLengthSpace
+						if (this.step && prevLeftSide > this.step && !(/^-\d{3} ?/.test(leftSide))) {
+							if (leftSide === '-0') {
+								this.step = 2
+							} else {
+								this.step = this.prevValue[this.step] === empty ? this.step + 1 : this.step - offsetLengthSpace
+							}
 						} else if (/^0/.test(target.value) && prevLeftSide > this.step) {
 							this.step = 1
 						} else if (this.step === prevLeftSide) {
@@ -422,17 +378,14 @@ export default {
 
 			if (this.isPressedMinus) {
 				this.isToggleMinus = !this.isToggleMinus
-				console.log('tm', this.isToggleMinus)
 			}
 
 			if (this.isEscape) {
-				console.log('isEsc', this.isEscape, this.prevStateValue)
-				// if (/-/.test(this.prevStateValue)) {
-				// 	this.isToggleMinus = true
-				// }
+				const valueToNumber = Number(this.prevStateValue.replace(/ /g, '').replace(/,/, '.'))
 				this.isToggleMinus = /-/.test(this.prevStateValue)
 				target.value = this.definedNegativeOrPositiveValue(this.prevStateValue.replace(/-/, ''))
-				// return $emmit
+				
+				this.$emit('input', this.definedNegativeOrPositiveValue(valueToNumber, 'number'))
 				target.select()
 			}
 
