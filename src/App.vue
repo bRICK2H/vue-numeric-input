@@ -3,10 +3,10 @@
 		<input-numeric
 			:separator="true"
 			:decimal="decimal"
-			v-model="cValue"
+			v-model="value"
 		/>
 	
-		outer: {{ cValue }}
+		outer: {{ value }}
 	</div>
 </template>
 
@@ -19,12 +19,8 @@ export default {
 		inputNumeric
 	},
 	data: () => ({
-		data: { value: 2.420 },
-		cValue: 4,
+		value: 4,
 		decimal: 2,
-		mValue: 154655,
-		kValue: 154655.315,
-		nValue: 1.44,
 	}),
 	watch: {
 		'data.value'(val) {
