@@ -1,17 +1,34 @@
 <template>
-	<input type="text"
-		:value="iValue"
-		@input="input($event)"
-		@keydown="keyAction($event)"
-		@focus="focus($event)"
-		@blur="unfocus($event)"
-	>
+	<div class="b-price">
+		<div class="input-box b-price__input-box"
+			:style="setStyleInputBox"
+		>
+			<span class="input-box__sign"
+				v-html="getCurrency"
+				:style="setStyleSign"
+				@click="focusToInput($event)"
+			></span>
+				<input class="input-box__price"
+					type="text"
+					:style="setStyleInput"
+					:value="iValue"
+					@input="input($event)"
+					@keydown="keyAction($event)"
+					@focus="focus($event)"
+					@blur="unfocus($event)"
+				>
+		</div>
+	</div>
 </template>
 
 <script>
 export default {
 	name: 'inputNumeric',
 	props: {
+		separator: {
+			type: Boolean,
+			default: true
+		},
 		value: {
 			type: [String, Number],
 			default: 0,
@@ -20,9 +37,17 @@ export default {
 			type: [String, Number],
 			default: 0
 		},
-		separator: {
-			type: Boolean,
-			default: true
+		width: {
+			type: [Number, String],
+			default: 150
+		},
+		height: {
+			type: [Number, String],
+			default: 37
+		},
+		currency: {
+			type: String,
+			default: 'df'
 		},
 	},
 	data: () => ({
@@ -44,12 +69,42 @@ export default {
 		isDeletes: false,
 		isDelete: false,
 		isBackspace: false,
-		isFocus: false,
 		isLimit: false,
 		isWatch: true,
 		min: -Math.pow(10, 10),
 		max: Math.pow(10, 10),
+		currencies: {
+			df: { sign: '', pos: 'right' },
+			en: { sign: '&#36;', pos: 'left' },
+			lb: { sign: '&#163;', pos: 'left' },
+			ru: { sign: '&#8381;', pos: 'right' },
+		},
 	}),
+	computed: {
+		getCurrency() {
+			return this.currencies[this.currency].sign
+		},
+		setStyleInput() {
+			console.log('setStyleInput')
+			return {
+				textAlign: this.currencies[this.currency].pos,
+				[`padding-${this.currencies[this.currency].pos}`]: '20px'
+			}
+		},
+		setStyleSign() {
+			return { [this.currencies[this.currency].pos]: '0' }
+		},
+		setStyleInputBox() {
+			return {
+				height: !isNaN(Number(this.height))
+					? `${this.height}px`
+					: this.height,
+				width: !isNaN(Number(this.width))
+					? `${this.width}px`
+					: this.width
+			}
+		},
+	},
 	methods: {
 		input(e) {
 			const { target } = e
@@ -80,8 +135,6 @@ export default {
 		},
 		focus(e) {
 			const { target } = e
-
-			this.isFocus = true
 			target.select()
 		},
 		unfocus(e) {
@@ -412,5 +465,44 @@ export default {
 </script>
 
 <style lang="scss">
+	.b-price {
+		width: inherit;
+		display: flex;
+		align-items: center;
 
+		&__input-box {
+			display: flex;
+			align-items: center;
+		}
+	}
+
+	.input-box {
+		width: auto;
+		position: relative;
+		border: 1px solid #cdcdcd;
+		background: #fff;
+		border-radius: 2px;
+
+		&__sign {
+			height: 100%;
+			width: 20px;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			font-family: auto;
+			font-size: 19px;
+			color: #5f5f5f;
+			position: absolute;
+			user-select: none;
+		}
+
+		&__price {
+			width: 100%;
+			font-size: 14px;
+			padding: 0;
+			border: none;
+			outline: none;
+			background: none;
+		}
+	}
 </style>
