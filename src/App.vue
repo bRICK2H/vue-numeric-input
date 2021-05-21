@@ -1,9 +1,10 @@
 <template>
 	<div class="container">
 		<input-numeric
+			currency="ru"
 			:separator="true"
-			:decimal="decimal"
 			v-model="value"
+			decimal="2"
 		/>
 	
 		outer: {{ value }}
@@ -19,7 +20,7 @@ export default {
 		inputNumeric
 	},
 	data: () => ({
-		value: 4,
+		value: null,
 		decimal: 2,
 	}),
 	watch: {
@@ -29,6 +30,9 @@ export default {
 		mValue(val) {
 			console.log('val', val)
 		}
+	},
+	created() {
+		setTimeout(() => this.value = 300, 400)
 	}
 }
 </script>

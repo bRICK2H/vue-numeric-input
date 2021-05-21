@@ -2,11 +2,12 @@
 	<div class="b-price">
 		<div class="input-box b-price__input-box"
 			:style="setStyleInputBox"
+			:class="{ 'input-box__limit': isToggleWarning }"
 		>
 			<span class="input-box__sign"
 				v-html="getCurrency"
 				:style="setStyleSign"
-				@click="focusToInput($event)"
+				@click="focusToInput"
 			></span>
 				<input class="input-box__price"
 					type="text"
@@ -31,11 +32,19 @@ export default {
 		},
 		value: {
 			type: [String, Number],
-			default: 0,
+			default: 0
 		},
 		decimal: {
 			type: [String, Number],
 			default: 0
+		},
+		min: {
+			type: [String, Number],
+			default: 0
+		},
+		max: {
+			type: [String, Number],
+			default: 100000
 		},
 		width: {
 			type: [Number, String],
@@ -47,16 +56,16 @@ export default {
 		},
 		currency: {
 			type: String,
-			default: 'df'
+			default: 'ru'
 		},
 	},
 	data: () => ({
-		step: 0,
 		iValue: 0,
+		step: 0,
 		prevValue: 0,
 		prevStateValue: 0,
 		iDecimal: 0,
-		prevOffset: null,
+		prevOffset: 0,
 		selection: { s: 0, e: 0 },
 		isSelectableValue: false,
 		isInteger: false,
@@ -65,14 +74,14 @@ export default {
 		isDelimiter: false,
 		isPressedMinus: false,
 		isToggleMinus: false,
+		isToggleWarning: false,
 		isNumeric: false,
 		isDeletes: false,
 		isDelete: false,
 		isBackspace: false,
 		isLimit: false,
+		isLoad: false,
 		isWatch: true,
-		min: -Math.pow(10, 10),
-		max: Math.pow(10, 10),
 		currencies: {
 			df: { sign: '', pos: 'right' },
 			en: { sign: '&#36;', pos: 'left' },
@@ -85,10 +94,9 @@ export default {
 			return this.currencies[this.currency].sign
 		},
 		setStyleInput() {
-			console.log('setStyleInput')
 			return {
 				textAlign: this.currencies[this.currency].pos,
-				[`padding-${this.currencies[this.currency].pos}`]: '20px'
+				[`padding-${this.currencies[this.currency].pos}`]: '21px'
 			}
 		},
 		setStyleSign() {
@@ -101,7 +109,7 @@ export default {
 					: this.height,
 				width: !isNaN(Number(this.width))
 					? `${this.width}px`
-					: this.width
+					: this.width,
 			}
 		},
 	},
@@ -117,20 +125,32 @@ export default {
 					numericValue = this.isInteger
 						? convertedValue
 						: Number(convertedValue.replace(/,/, '.')),
-					isNegativeValue = /-/.test(convertedValue),
-					isMaxPositive = !isNegativeValue && numericValue > this.max,
-					isMaxNegative = isNegativeValue && numericValue < this.min
+					totalInnerValue = this.definedNegativeOrPositiveValue(
+						this.separator
+							? this.separatorValue(convertedValue)
+							: convertedValue,
+						'string'
+					),
+					totalOuterValue = this.definedNegativeOrPositiveValue(numericValue, 'number'),
+					isNegativeValue = /-/.test(totalInnerValue),
+					isMaxPositive = !isNegativeValue && totalOuterValue > +this.max,
+					isMaxNegative = isNegativeValue && totalOuterValue < +this.min
 
-			// В самом конце, когда все сделаю, по параметру isLimit подсвечивать input красным
 			this.isLimit = isMaxPositive || isMaxNegative
 
-			if (!this.isLimit) {
-				target.value = this.definedNegativeOrPositiveValue(this.separator ? this.separatorValue(convertedValue) : convertedValue, 'string')
-				this.$emit('input', this.definedNegativeOrPositiveValue(numericValue, 'number'))
-				this.setCursorPosition(target)
-			} else {
+			if (this.isLimit) {
+				this.isToggleWarning = true
+				setTimeout(() => this.isToggleWarning = false, 300)
+
+				if (!(/-/.test(this.prevValue))) this.isToggleMinus = false
+
 				target.value = this.prevValue
 				target.setSelectionRange(this.step - 1, this.step - 1)
+
+			} else {
+				target.value = totalInnerValue
+				this.$emit('input', totalOuterValue)
+				this.setCursorPosition(target)
 			}
 		},
 		focus(e) {
@@ -140,6 +160,17 @@ export default {
 		unfocus(e) {
 			const { target } = e
 			this.prevStateValue = target.value
+		},
+		focusToInput(e) {
+			const { target } = e
+			target.nextSibling.select()
+		},
+		definedNegativeOrPositiveValue(value, toType) {
+			return toType === 'number'
+				? this.isToggleMinus
+					? value * -1 : value * 1
+				: this.isToggleMinus 
+					? `-${value}` : value
 		},
 		dataDefinition(props) {
 			const { decimal, value } = props,
@@ -158,13 +189,6 @@ export default {
 			this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
 
 			this.$emit('input', valueToNumber)
-		},
-		definedNegativeOrPositiveValue(value, toType) {
-			return toType === 'number'
-				? this.isToggleMinus
-					? value * -1 : value * 1
-				: this.isToggleMinus 
-					? `-${value}` : value
 		},
 		convertValue(value) {
 			const defineZero = 0,
@@ -229,7 +253,7 @@ export default {
 					if (!this.isDelimiter && !this.isSelectableValue) {
 						const clearValue = unSeparateValue.replace(/[^\d,]/g, '')
 						const fixedValue = Number(clearValue.replace(/,/, '.')).toFixed(this.iDecimal)
-	
+
 						return fixedValue.replace(/\./, ',')
 					}
 
@@ -445,22 +469,21 @@ export default {
 		},
 	},
 	watch: {
-		$props: {
+		value: {
 			deep: true,
-			handler(props) {
-				if (this.isWatch) {
-					this.dataDefinition(props)
+			immediate: true,
+			handler(val) {
+				if (val !== null) this.dataDefinition(this.$props)
+				
+				if (!this.isLoad && val !== null) {
+					this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
+					this.isToggleMinus = /-/.test(this.iValue)
+					this.prevStateValue = this.iValue
+					this.isLoad = true
 				}
 			}
 		}
 	},
-	created() {
-		this.dataDefinition(this.$props)
-		
-		this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
-		this.isToggleMinus = /-/.test(this.iValue)
-		this.prevStateValue = this.iValue
-	}
 }
 </script>
 
@@ -480,7 +503,6 @@ export default {
 		width: auto;
 		position: relative;
 		border: 1px solid #cdcdcd;
-		background: #fff;
 		border-radius: 2px;
 
 		&__sign {
@@ -504,5 +526,17 @@ export default {
 			outline: none;
 			background: none;
 		}
+
+		&__limit {
+			animation: limit .3s ease;
+
+			@keyframes limit {
+				0% { left: 2px; background-color: rgba(255, 99, 71, 0.219); }
+				25% { left: -2px; background-color: rgba(255, 99, 71, 0.219); }
+				50% { left: 2px; }
+				75% { left: -2px; }
+			}
+		}
+
 	}
 </style>
