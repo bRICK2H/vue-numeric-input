@@ -81,6 +81,7 @@ export default {
 		isBackspace: false,
 		isLimit: false,
 		isLoad: false,
+		isFirstUpdate: false,
 		isWatch: true,
 		currencies: {
 			df: { sign: '', pos: 'right' },
@@ -117,8 +118,9 @@ export default {
 		input(e) {
 			const { target } = e
 			
-			this.step = target.selectionStart
 			this.isWatch = false
+			this.isFirstUpdate = true
+			this.step = target.selectionStart
 			setTimeout(() => this.isWatch = true)
 
 			const convertedValue = this.convertValue(target.value),
@@ -148,7 +150,7 @@ export default {
 				target.setSelectionRange(this.step - 1, this.step - 1)
 
 			} else {
-				target.value = totalInnerValue
+				target.value = this.iValue = totalInnerValue
 				this.$emit('input', totalOuterValue)
 				this.setCursorPosition(target)
 			}
@@ -172,7 +174,7 @@ export default {
 				: this.isToggleMinus 
 					? `-${value}` : value
 		},
-		dataDefinition(props) {
+		propsDefinition(props) {
 			const { decimal, value } = props,
 					iDecimal = +decimal,
 					iValue = (() => {
@@ -189,6 +191,12 @@ export default {
 			this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
 
 			this.$emit('input', valueToNumber)
+		},
+		dataDefinition() {
+			this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
+			this.isToggleMinus = /-/.test(this.iValue)
+			this.prevStateValue = this.iValue
+			this.isLoad = true
 		},
 		convertValue(value) {
 			const defineZero = 0,
@@ -470,20 +478,19 @@ export default {
 	},
 	watch: {
 		value: {
-			deep: true,
 			immediate: true,
-			handler(val) {
-				if (val !== null) this.dataDefinition(this.$props)
-				
-				if (!this.isLoad && val !== null) {
-					this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
-					this.isToggleMinus = /-/.test(this.iValue)
-					this.prevStateValue = this.iValue
-					this.isLoad = true
-				}
+			handler() {
+				this.propsDefinition(this.$props)
+				if (!this.isLoad) this.dataDefinition()
 			}
-		}
+		},
 	},
+	updated() {
+		if (!this.isFirstUpdate) {
+			this.dataDefinition()
+			this.isFirstUpdate = true
+		}
+	}
 }
 </script>
 

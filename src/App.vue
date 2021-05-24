@@ -4,7 +4,7 @@
 			currency="ru"
 			:separator="true"
 			v-model="value"
-			decimal="2"
+			:decimal="decimal"
 		/>
 	
 		outer: {{ value }}
@@ -20,8 +20,9 @@ export default {
 		inputNumeric
 	},
 	data: () => ({
-		value: null,
+		value: 0,
 		decimal: 2,
+		val: 0
 	}),
 	watch: {
 		'data.value'(val) {
@@ -32,7 +33,7 @@ export default {
 		}
 	},
 	created() {
-		setTimeout(() => this.value = 300, 400)
+		setTimeout(() => this.value = 1000, 400)
 	}
 }
 </script>
