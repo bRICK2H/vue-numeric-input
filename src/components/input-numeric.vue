@@ -458,7 +458,7 @@ export default {
 			this.isBackspace = e.code === 'Backspace'
 			this.isEscape = e.code === 'Escape'
 			this.isDeletes = this.isDelete || this.isBackspace
-			this.isNumeric = [0,1,2,3,4,5,6,7,8,9].map(curr => `Digit${curr}`).includes(e.code)
+			this.isNumeric = [0,1,2,3,4,5,6,7,8,9].some(curr => (e.code === `Digit${curr}` || e.code === `Numpad${curr}`))
 			this.isPressedMinus = e.code === 'Minus'
 
 			if (this.isPressedMinus) {
