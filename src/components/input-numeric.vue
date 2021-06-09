@@ -445,21 +445,21 @@ export default {
 			target.setSelectionRange(this.step, this.step)
 		},
 		keyAction(e) {
-			const { target } = e
+			const { target, code, key } = e
 
 			this.prevValue = target.value
 			this.selection.s = target.selectionStart
 			this.selection.e = target.selectionEnd
 			this.isSelectableValue = this.selection.s !== this.selection.e,
-			this.isDelimiter = ['Comma', 'Period'].includes(e.code)
-			this.isPressedPoint = e.code === 'Period'
-			this.isPressedComma = e.code === 'Comma'
-			this.isDelete = e.code === 'Delete'
-			this.isBackspace = e.code === 'Backspace'
-			this.isEscape = e.code === 'Escape'
+			this.isDelimiter = ['Comma', 'Period', 'NumpadDecimal'].includes(code)
+			this.isPressedPoint = code === 'Period' && key === '.'
+			this.isPressedComma = code === 'Comma' && key === ','
+			this.isDelete = code === 'Delete'
+			this.isBackspace = code === 'Backspace'
+			this.isEscape = code === 'Escape'
 			this.isDeletes = this.isDelete || this.isBackspace
-			this.isNumeric = [0,1,2,3,4,5,6,7,8,9].some(curr => (e.code === `Digit${curr}` || e.code === `Numpad${curr}`))
-			this.isPressedMinus = e.code === 'Minus'
+			this.isNumeric = [0,1,2,3,4,5,6,7,8,9].some(curr => (code === `Digit${curr}` || code === `Numpad${curr}`))
+			this.isPressedMinus = code === 'Minus'
 
 			if (this.isPressedMinus) {
 				this.isToggleMinus = !this.isToggleMinus
