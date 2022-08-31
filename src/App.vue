@@ -2,38 +2,94 @@
 	<div class="b-price">
 		<div class="input-box b-price__input-box"
 			:style="setStyleInputBox"
-			:class="[{ 'input-box__limit': isToggleWarning }, setClassDisabledContainer]"
+			:class="[
+				{ 'input-box__limit': isToggleWarning },
+				{ 'input-box__focus': isFocus },
+				target,
+				setClassDisabledContainer
+			]"
 		>
-			<span class="input-box__sign"
-				v-html="getCurrency"
+			<transition name="button-update">
+				<div v-show="updateButton"
+					class="button-update"
+					:style="setStyleButtonUpdate"
+					@click="updateValue"
+				>
+					<span class="button-update-icon">
+						<VUpdate />
+					</span>
+				</div>
+			</transition>
+
+			<span v-show="isCurrency && !discount"
+				class="input-box__sign"
+				v-html="getSign"
 				:style="setStyleSign"
 				@click="focusToInput"
 			></span>
-				<input class="input-box__price"
-					type="text"
-					:style="setStyleInput"
-					:value="iValue"
-					:disabled="disabled"
-					@input="input($event)"
-					@keydown="keyAction($event)"
-					@focus="focus($event)"
-					@blur="unfocus($event)"
+
+			<input class="input-box__price"
+				type="text"
+				:ref="inputRef"
+				:style="setStyleInput"
+				:value="iValue"
+				:disabled="disabled"
+				@input="input($event)"
+				@keydown="keyAction($event)"
+				@focus="focus($event)"
+				@blur="unfocus($event)"
+			>
+
+			<div v-if="discount"
+				class="discount-box"
+				:style="{ width: `${height * 2}px` }"
+			>
+				<span class="discount-item"
+					:class="{ 'discount-item--active': discountType === 'currency' }"
+					:style="{
+						width: `${height}px`,
+						cursor: disabled ? 'no-drop' : 'pointer'
+					}"
+					@click="!disabled ? setDiscount('currency') : false"
 				>
+					<VPercent />
+				</span>
+				<span class="discount-item"
+					:class="{ 'discount-item--active': discountType === 'percent' }"
+					:style="{
+						width: `${height}px`,
+						cursor: disabled ? 'no-drop' : 'pointer'
+					}"
+					@click="!disabled ? setDiscount('percent') : false"
+				>
+					<VCurrency />
+				</span>
+			</div>
 		</div>
+
 	</div>
 </template>
 
 <script>
+import VUpdate from './assets/img/svg/v-update'
+import VPercent from './assets/img/svg/v-percent'
+import VCurrency from './assets/img/svg/v-currency'
+
 export default {
 	name: 'inputNumeric',
+	components: {
+		VUpdate,
+		VPercent,
+		VCurrency
+	},
 	props: {
-		separator: {
-			type: Boolean,
-			default: true
-		},
 		value: {
 			type: [String, Number],
 			default: 0
+		},
+		separator: {
+			type: Boolean,
+			default: true
 		},
 		decimal: {
 			type: [String, Number],
@@ -47,7 +103,23 @@ export default {
 			type: [String, Number],
 			default: 100000
 		},
+		isDefaultReset: {
+			type: Boolean,
+			default: true
+		},
 		disabled: {
+			type: Boolean,
+			default: false
+		},
+		focusSelected: {
+			type: Boolean,
+			default: true
+		},
+		focusOnOpen: {
+			type: Boolean,
+			default: false
+		},
+		toggleFocus: {
 			type: Boolean,
 			default: false
 		},
@@ -59,12 +131,25 @@ export default {
 			type: [Number, String],
 			default: 37
 		},
+		discount: {
+			type: Boolean,
+			default: false
+		},
+		updateButton: {
+			type: Boolean,
+			default: false
+		},
 		currency: {
 			type: String,
-			default: 'ru'
+			default: 'df'
+		},
+		target: {
+			type: String,
+			default: ''
 		},
 	},
 	data: () => ({
+		inputRef: '',
 		iValue: 0,
 		step: 0,
 		prevValue: 0,
@@ -86,27 +171,38 @@ export default {
 		isBackspace: false,
 		isLimit: false,
 		isLoad: false,
+		isFocus: false,
 		isFirstUpdate: false,
 		isWatch: true,
 		currencies: {
-			df: { sign: '', pos: 'right' },
-			en: { sign: '&#36;', pos: 'left' },
-			lb: { sign: '&#163;', pos: 'left' },
-			ru: { sign: '&#8381;', pos: 'right' },
+			df: { sign: '', pos: 'right', order: 0 },
+			en: { sign: '&#36;', pos: 'left', order: 1 },
+			lb: { sign: '&#163;', pos: 'left', order: 1 },
+			ru: { sign: '&#8381;', pos: 'right', order: 0 },
 		},
+		discountType: 'percent',
+		discountAnimate: false,
+		timeoutID: null
 	}),
 	computed: {
+		isCurrency() {
+			return !!this.currency && this.currency in this.currencies
+		},
 		getCurrency() {
-			return this.currencies[this.currency].sign
+			return this.isCurrency ? this.currencies[this.currency] : null
+		},
+		getSign() {
+			return this.isCurrency ? this.getCurrency.sign : null
 		},
 		setStyleInput() {
 			return {
-				textAlign: this.currencies[this.currency].pos,
-				[`padding-${this.currencies[this.currency].pos}`]: '21px'
+				textAlign: this.isCurrency ? this.getCurrency.pos : 'right',
+				[`padding-${this.isCurrency ? this.getCurrency.pos : 'right'}`]: '21px',
+				cursor: this.disabled ? 'no-drop' : 'default'
 			}
 		},
 		setStyleSign() {
-			return { [this.currencies[this.currency].pos]: '0' }
+			return { [this.isCurrency ? this.getCurrency.pos : 'right']: '0' }
 		},
 		setStyleInputBox() {
 			return {
@@ -118,8 +214,20 @@ export default {
 					: this.width,
 			}
 		},
+		setStyleButtonUpdate() {
+			return {
+				minWidth: `${this.height / 2}px`,
+				height: `${this.height / 2}px`,
+				order: this.isCurrency
+					? this.getCurrency.order
+					: 1
+			}
+		},
 		setClassDisabledContainer() {
 			return this.disabled ? 'input-box--disabled' : null
+		},
+		valueToNumber() {
+			return Number(this.iValue.replace(/ /, '').replace(/,/, '.'))
 		}
 	},
 	methods: {
@@ -159,17 +267,28 @@ export default {
 
 			} else {
 				target.value = this.iValue = totalInnerValue
-				this.$emit('input', totalOuterValue)
+				this.$emit('input', !this.discount
+					? totalOuterValue
+					: {
+						value: totalOuterValue,
+						type: this.discountType
+					}
+				)
 				this.setCursorPosition(target)
 			}
 		},
 		focus(e) {
+			if (!this.focusSelected) return
+
 			const { target } = e
+			this.isFocus = true
 			target.select()
 		},
 		unfocus(e) {
 			const { target } = e
+			this.isFocus = false
 			this.prevStateValue = target.value
+			this.$emit('blur')
 		},
 		focusToInput(e) {
 			const { target } = e
@@ -198,7 +317,13 @@ export default {
 			this.iDecimal = +decimal
 			this.isInteger = Number.isInteger(valueToNumber) && !iDecimal
 
-			this.$emit('input', valueToNumber)
+			this.$emit('input', !this.discount
+					? valueToNumber
+					: {
+						value: valueToNumber,
+						type: this.discountType
+					}
+				)
 		},
 		dataDefinition() {
 			this.prevOffset = this.iValue.length - this.iValue.replace(/ /g, '').length
@@ -454,7 +579,7 @@ export default {
 		},
 		keyAction(e) {
 			const { target, code, key } = e
-
+			
 			this.prevValue = target.value
 			this.selection.s = target.selectionStart
 			this.selection.e = target.selectionEnd
@@ -473,15 +598,36 @@ export default {
 				this.isToggleMinus = !this.isToggleMinus
 			}
 
-			if (this.isEscape) {
+			if (this.isEscape && this.isDefaultReset) {
 				const valueToNumber = Number(this.prevStateValue.replace(/ /g, '').replace(/,/, '.'))
 				this.isToggleMinus = /-/.test(this.prevStateValue)
 				target.value = this.definedNegativeOrPositiveValue(this.prevStateValue.replace(/-/, ''))
 				
-				this.$emit('input', this.definedNegativeOrPositiveValue(valueToNumber, 'number'))
+				const totalValue = this.definedNegativeOrPositiveValue(valueToNumber, 'number')
+				this.$emit('input', !this.discount
+					? totalValue
+					: {
+						value: totalValue,
+						type: this.discountType
+					}
+				)
 				target.select()
 			}
 
+		},
+		updateValue() {
+			this.discountAnimate = true
+			clearTimeout(this.timeoutID)
+			this.timeoutID = setTimeout(() => this.discountAnimate = false, 300)
+
+			this.$emit('update:value')
+		},
+		setDiscount(type) {
+			this.discountType = type
+			this.$emit('input', {
+				type,
+				value: this.valueToNumber
+			})
 		},
 	},
 	watch: {
@@ -492,12 +638,32 @@ export default {
 				if (!this.isLoad) this.dataDefinition()
 			}
 		},
+		toggleFocus: {
+			immediate: true,
+			async handler(focus) {
+				await this.$nextTick()
+				focus
+					? this.$refs[this.inputRef].focus()
+					: this.$refs[this.inputRef].blur()
+			}
+		}
 	},
 	updated() {
 		if (!this.isFirstUpdate) {
 			this.dataDefinition()
 			this.isFirstUpdate = true
 		}
+	},
+	created() {
+		this.inputRef = `input-ref:${String(Math.random()).slice(2, 10)}`
+	},
+	mounted() {
+		if (this.focusOnOpen) {
+			this.$refs[this.inputRef].focus()
+		}
+	},
+	beforeDestroy() {
+		this.$emit('beforeClose')
 	}
 }
 </script>
@@ -526,8 +692,8 @@ export default {
 			display: flex;
 			justify-content: center;
 			align-items: center;
-			font-family: auto;
-			font-size: 19px;
+			font-family: 'Inter', sans-serif;
+			font-size: 17px;
 			color: #5f5f5f;
 			position: absolute;
 			user-select: none;
@@ -543,19 +709,95 @@ export default {
 		}
 
 		&__limit {
-			animation: limit .3s ease;
+			animation: limit .2s ease;
 
 			@keyframes limit {
-				0% { left: 2px; background-color: rgba(255, 99, 71, 0.219); }
-				25% { left: -2px; background-color: rgba(255, 99, 71, 0.219); }
+				0% {
+					left: 3px;
+					background-color: rgba(255, 99, 71, 0.219);
+					border: 2px solid rgba(255, 99, 71, 0.219);
+				}
+				25% {
+					left: -2px;
+					background-color: rgba(255, 99, 71, 0.219);
+					border: 2px solid rgba(255, 99, 71, 0.219);
+				}
 				50% { left: 2px; }
-				75% { left: -2px; }
+				75% { left: -1px; }
 			}
+		}
+
+		&__focus {
+			border: 2px solid #cfcde5;
 		}
 
 		&--disabled { 
 			opacity: .6;
 		}
+	}
 
+	// discount
+	.discount-box {
+		height: 100%;
+		display: flex;
+		border-left: 2px solid #eeedf7;
+	}
+	.discount-item {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background-color: #fff;
+		transition: .2s;
+
+		&:hover {
+			background-color: rgba(238, 237, 247, .2);
+		}
+
+		&--active {
+			background-color: #eeedf7;
+
+			&:hover {
+				background-color: rgba(238, 237, 247, .8);
+			}
+		}
+		
+		&:last-child {
+			border-top-right-radius: 6px;
+			border-bottom-right-radius: 6px;
+		}
+	}
+	.button-update {
+		margin: 0 5px;
+		border-radius: 10px;
+		outline: none;
+		background-color: #fff;
+		cursor: pointer;
+		box-shadow: 0px 0px 4px rgba(26, 32, 44, 0.06), 0px 4px 10px -1px rgba(26, 32, 44, 0.06);
+
+		&:hover {
+			box-shadow: 0px 0px 4px rgba(26, 32, 44, 0.2), 0px 4px 10px -1px rgba(26, 32, 44, 0.2);
+		}
+	}
+	.button-update-icon {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.button-update-enter-active {
+		animation: update-enter .2s;
+
+		@keyframes update-enter {
+			0% { transform: scale(0); opacity: 0; }
+		}
+	}
+	.button-update-leave-active {
+		animation: update-leave .4s;
+
+		@keyframes update-leave {
+			50% { transform: rotate(180deg); }
+			100% { opacity: 0; }
+		}
 	}
 </style>
